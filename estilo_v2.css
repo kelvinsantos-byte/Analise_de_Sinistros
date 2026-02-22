@@ -1,0 +1,252 @@
+/* 1. RESET E CONFIGURAÇÕES GERAIS */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: #f0f2f5;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+/* 2. CONTAINER PRINCIPAL */
+.container-login {
+    max-width: 650px;
+    width: 100%;
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.header-form {
+    text-align: center;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 15px;
+}
+
+.header-form h2 {
+    color: #00003c;
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* 3. CAMPOS DE ENTRADA (INPUTS) */
+.campo-grupo {
+    margin-bottom: 20px;
+}
+
+.linha-campos {
+    display: flex;
+    gap: 15px;
+}
+
+.linha-campos .campo-grupo { flex: 1; }
+
+label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #444;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d9e0;
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #00003c;
+    box-shadow: 0 0 0 3px rgba(0, 0, 60, 0.1);
+}
+
+/* 4. CORREÇÃO: BOTÕES DE RÁDIO MODERNOS (SENSOR DE FADIGA) */
+.radio-group {
+    display: flex;
+    gap: 10px;
+}
+
+/* Esconde o rádio circular padrão */
+.radio-group input[type="radio"] {
+    display: none;
+}
+
+/* Estiliza o Label como um Botão Card */
+.radio-group label {
+    flex: 1;
+    background-color: #f8f9fa;
+    border: 2px solid #d1d9e0;
+    padding: 12px;
+    text-align: center;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    color: #555;
+    transition: all 0.2s ease;
+    margin-bottom: 0; /* Remove margem extra */
+}
+
+/* Quando selecionado: Fundo Azul Escuro e Texto Branco */
+.radio-group input[type="radio"]:checked + label {
+    background-color: #00003c;
+    border-color: #00003c;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 60, 0.2);
+}
+
+.radio-group label:hover {
+    border-color: #00003c;
+    background-color: #f0f4f8;
+}
+
+/* Destaque para o container que aparece dinamicamente */
+#containerAtivo {
+    background: #f4f7f9;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 5px solid #00003c;
+    margin-top: 10px;
+}
+
+/* 5. ÁREAS DE COLAGEM (VERDE AO FOCAR) */
+.quadro-foto {
+    width: 100%;
+    border: 2px dashed #00003c;
+    border-radius: 8px;
+    background: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.quadro-foto:focus {
+    border: 2px solid #28a745; /* Verde JCA */
+    background-color: #fafffa;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.2);
+}
+
+.quadro-foto:focus .placeholder-interno {
+    color: #28a745;
+}
+
+.placeholder-interno {
+    color: #00003c;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+    pointer-events: none;
+}
+
+.img-preview-ajuste {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: none;
+}
+
+/* 6. LAYOUTS DAS ETAPAS 5.0 E 5.1 */
+.layout-fotos-vertical {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.layout-fotos-vertical .quadro-foto { height: 160px; }
+
+.layout-fotos-horizontal {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.layout-fotos-horizontal .quadro-foto { height: 250px; }
+.layout-fotos-horizontal div:nth-child(n+4) { display: none; }
+
+/* 7. BOTÕES DE NAVEGAÇÃO */
+.btn-proximo, .btn-finalizar, .btn-voltar, .btn-extra {
+    padding: 15px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: filter 0.2s, transform 0.1s;
+}
+
+.btn-proximo:active, .btn-voltar:active { transform: scale(0.98); }
+
+.btn-voltar { background-color: #6c757d; color: white; flex: 1; }
+.btn-proximo { background-color: #00003c; color: white; flex: 2; }
+.btn-finalizar { background-color: #28a745; color: white; flex: 2; }
+.btn-extra { background-color: #5d2a8e; color: white; width: 100%; margin-top: 15px; }
+
+.btn-link {
+    background: none; border: none; color: #00003c; cursor: pointer;
+    font-size: 11px; font-weight: bold; text-decoration: underline; padding: 0;
+    margin-bottom: 10px;
+}
+
+/* 8. TÍTULOS E RESPONSIVIDADE */
+.secao-titulo {
+    color: #00003c;
+    font-size: 18px;
+    border-left: 5px solid #00003c;
+    padding-left: 12px;
+    margin-bottom: 20px;
+    background: #f8f9fa;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+@media (max-width: 480px) {
+    .layout-fotos-vertical { grid-template-columns: 1fr; }
+    .linha-campos { flex-direction: column; }
+    .radio-group { flex-direction: column; }
+}
+/* Estilo do Switch (Botão de Slide) */
+.switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #d9534f; } /* Vermelho para indicar falha */
+input:checked + .slider:before { transform: translateX(20px); }
+/* Ajuste de espaçamento para evitar que o select cole nas fotos */
+#orientacao_fotos {
+    margin-bottom: 25px !important; /* Cria o recuo necessário */
+    display: block;
+    width: 100%;
+}
+
+/* Espaçamento interno dos containers de fotos para organização visual */
+.layout-fotos-vertical, 
+.layout-fotos-horizontal {
+    margin-top: 10px;
+    gap: 20px !important; /* Garante que as fotos não grudem umas nas outras */
+}
+
+/* Margem de segurança nos wrappers individuais */
+.campo-foto-wrapper {
+    margin-bottom: 15px;
+}

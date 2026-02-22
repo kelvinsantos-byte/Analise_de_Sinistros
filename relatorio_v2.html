@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Sinistro - Grupo JCA</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* CONFIGURAÇÃO DE IMPRESSÃO E FONTES */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+        body { 
+            font-family: 'Trebuchet MS', Arial, sans-serif; 
+            margin: 0; padding: 0; background: #f0f0f0; 
+        }
+
+        .folha-a4 {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 10mm auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media print {
+            body { background: none; }
+            .folha-a4 { margin: 0; box-shadow: none; width: 100%; }
+            .btn-float-print { display: none; }
+        }
+
+        /* CAPA */
+        .faixa-topo, .faixa-rodape { height: 15px; background: #00003c; width: 100%; position: absolute; left: 0; }
+        .faixa-topo { top: 0; }
+        .faixa-rodape { bottom: 0; }
+
+        .header-logos { display: flex; align-items: center; margin-top: 20px; }
+        .logo-jca-black { height: 45px; }
+        .linha-separadora { height: 45px; width: 1px; background: #ccc; margin-left: 20px; }
+
+        .conteudo-principal { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .logo-io-central { width: 150px; margin-bottom: 40px; }
+        .txt-relatorio { font-size: 32px; color: #00003c; margin: 0; text-transform: uppercase; }
+        .txt-empresa { font-size: 24px; color: #666; margin: 10px 0; }
+        .txt-ocorrencia { font-size: 18px; color: #999; }
+
+        /* PÁGINA INTERNA */
+        .header-interno { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #00003c; padding-bottom: 10px; margin-bottom: 20px; }
+        .logo-interno { height: 35px; }
+        .titulo-interno { text-align: right; }
+        .titulo-interno h3 { margin: 0; color: #00003c; font-size: 16px; }
+        .titulo-interno p { margin: 0; font-size: 12px; color: #666; }
+
+        /* SEÇÃO 1. OCORRÊNCIA (CONFORME IMAGEM) */
+        .secao-titulo { font-size: 20px; font-weight: bold; margin: 20px 0 10px 0; }
+        .dados-tecnicos-veiculo { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+        .status-badge { font-size: 15px; margin-bottom: 5px; color: #333; }
+        .texto-narrativo { font-size: 14.5px; line-height: 1.6; text-align: justify; margin-top: 15px; }
+
+        /* GRÁFICOS */
+        .container-graficos { margin-top: 20px; }
+        .card-grafico { margin-bottom: 15px; border: 1px solid #ccc; }
+        .titulo-grafico-faixa { background: #777; color: white; padding: 4px 12px; font-size: 13px; font-weight: bold; }
+        canvas { width: 100% !important; height: 160px !important; padding: 5px; }
+
+        .btn-float-print { position: fixed; bottom: 20px; right: 20px; padding: 15px 25px; background: #28a745; color: white; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+    <div class="folha-a4" id="capa">
+        <div class="faixa-topo"></div>
+        <header class="header-logos">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-jca-black">
+            <div class="linha-separadora"></div>
+        </header>
+        <main class="conteudo-principal">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770942584/Intelig%C3%AAncia_vertical_preto_miw5ut.png" class="logo-io-central">
+            <div class="info-sinistro">
+                <h1 class="txt-relatorio">Relatório de Sinistro</h1>
+                <h2 id="exibirEmpresa" class="txt-empresa">---</h2>
+                <p class="txt-ocorrencia">Ocorrência: <span id="exibirOcorrencia">---</span></p>
+            </div>
+        </main>
+        <div class="faixa-rodape"></div>
+    </div>
+
+    <div class="folha-a4">
+        <header class="header-interno">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno">
+            <div class="titulo-interno">
+                <h3>Análise Técnica de Telemetria</h3>
+                <p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p>
+            </div>
+        </header>
+
+        <section id="secaoOcorrencia">
+            <div class="secao-titulo">1. Ocorrência</div>
+            <div id="veiculoDesc" class="dados-tecnicos-veiculo">---</div>
+            <div id="statusADAS" class="status-badge">---</div>
+            <div id="statusFadiga" class="status-badge">---</div>
+
+            <div class="texto-narrativo">
+                <span id="resumoBase"></span>
+                <span id="complementoDesc"></span>
+            </div>
+        </section>
+
+        <section class="container-graficos">
+            <div class="card-grafico">
+                <div class="titulo-grafico-faixa">Velocidade</div>
+                <canvas id="chartVelocidade"></canvas>
+            </div>
+            <div class="card-grafico">
+                <div class="titulo-grafico-faixa">RPM</div>
+                <canvas id="chartRPM"></canvas>
+            </div>
+            <div class="card-grafico">
+                <div class="titulo-grafico-faixa">Acelerador %</div>
+                <canvas id="chartAcelerador"></canvas>
+            </div>
+            <div class="card-grafico">
+                <div class="titulo-grafico-faixa">Pedal de Freio</div>
+                <canvas id="chartFreio"></canvas>
+            </div>
+        </section>
+
+        <footer style="margin-top: auto; font-size: 10px; color: #999; text-align: center; padding-bottom: 20px;">
+            Confidencial - Grupo JCA - Inteligência Operacional
+        </footer>
+    </div>
+
+    <button onclick="window.print()" class="btn-float-print">Imprimir / Salvar PDF</button>
+
+    <script>
+        window.onload = function() {
+            // 1. RECUPERAR DADOS DO STORAGE
+            const id = localStorage.getItem('rel_id_gerado');
+            const empresa = localStorage.getItem('rel_empresa');
+            const prefixo = localStorage.getItem('rel_prefixo');
+            const modelo = localStorage.getItem('rel_modelo') || "Modelo não identificado";
+            const ano = localStorage.getItem('rel_ano') || "2025";
+            const fadigaTxt = localStorage.getItem('rel_txt_fadiga');
+            const resumo = localStorage.getItem('rel_resumo_base');
+            const complemento = localStorage.getItem('rel_descricao_final');
+
+            // 2. PREENCHER CAPA
+            document.getElementById('exibirEmpresa').innerText = empresa;
+            document.getElementById('exibirOcorrencia').innerText = id;
+
+            // 3. PREENCHER PÁGINA INTERNA
+            document.querySelectorAll('.num-ocorrencia-interna').forEach(el => el.innerText = id);
+            document.getElementById('veiculoDesc').innerText = `${prefixo}: ${modelo} - ${ano}`;
+            
+            // Lógica ADAS baseada no ano
+            document.getElementById('statusADAS').innerText = parseInt(ano) >= 2019 ? "Veículo possui ADAS/ABAS." : "Veículo não possui tecnologia ADAS/ABAS.";
+            document.getElementById('statusFadiga').innerText = fadigaTxt + ".";
+
+            // Texto Narrativo
+            document.getElementById('resumoBase').innerText = resumo;
+            document.getElementById('complementoDesc').innerText = " " + (complemento || "");
+
+            // 4. CARREGAR TELEMETRIA (Simulação por enquanto, até link do CSV)
+            carregarGraficos();
+        }
+
+        function carregarGraficos() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { 
+                    x: { ticks: { font: { size: 9 } }, grid: { display: false } },
+                    y: { beginAtZero: true }
+                }
+            };
+
+            const labels = ['21:12:02', '21:12:13', '21:12:19', '21:12:33', '21:12:53', '21:13:10', '21:13:13', '21:13:14', '21:13:20', '21:13:33', '21:13:35', '21:13:53'];
+
+            // Velocidade
+            new Chart(document.getElementById('chartVelocidade'), {
+                type: 'line',
+                data: { labels, datasets: [{ data: [41, 34, 24, 0, 0, 20, 20, 23, 31, 42, 9, 0], borderColor: '#00003c', tension: 0.1, fill: false, pointRadius: 3 }] },
+                options: commonOptions
+            });
+
+            // RPM
+            new Chart(document.getElementById('chartRPM'), {
+                type: 'line',
+                data: { labels, datasets: [{ data: [900, 925, 1109, 600, 602, 1201, 1070, 1172, 1357, 1458, 806, 600], borderColor: '#237804', tension: 0.1 }] },
+                options: commonOptions
+            });
+
+            // Acelerador
+            new Chart(document.getElementById('chartAcelerador'), {
+                type: 'bar',
+                data: { labels, datasets: [{ data: [0, 0, 0, 0, 34, 85, 91, 91, 89, 77, 0, 0], backgroundColor: '#5ea2a6' }] },
+                options: commonOptions
+            });
+
+            // Freio
+            new Chart(document.getElementById('chartFreio'), {
+                type: 'bar',
+                data: { labels, datasets: [{ data: [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0], backgroundColor: '#e84c4c' }] },
+                options: commonOptions
+            });
+        }
+    </script>
+</body>
+</html>

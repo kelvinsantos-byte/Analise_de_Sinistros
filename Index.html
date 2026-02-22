@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Sinistro - Grupo JCA</title>
+    <link rel="stylesheet" href="estilo_v2.css">
+
+    <!-- ✅ BIBLIOTECA CHART.JS (OBRIGATÓRIA PARA OS GRÁFICOS) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+
+<body class="body-index">
+    <div class="container-login">
+        <header class="header-form">
+            <h2>Registro de Ocorrência</h2>
+            <p>Sistema Interno de Perícia Técnica</p>
+        </header>
+        
+        <form id="formSinistro">
+            <div class="campo-grupo">
+                <label for="empresa">Empresa:</label>
+                <select id="empresa" name="empresa" required>
+                    <option value="" disabled selected>Selecione a empresa...</option>
+                    <option value="Auto Viação 1001">Auto Viação 1001</option>
+                    <option value="Viação Cometa">Viação Cometa</option>
+                    <option value="Viação Catarinense">Viação Catarinense</option>
+                    <option value="Rápido Ribeirão">Rápido Ribeirão</option>
+                    <option value="Expresso do Sul">Expresso do Sul</option>
+                </select>
+            </div>
+
+            <div class="linha-campos">
+                <div class="campo-grupo">
+                    <label for="prefixo">Prefixo do Veículo:</label>
+                    <input type="text" id="prefixo" name="prefixo" required placeholder="Ex: 325534">
+                </div>
+                <div class="campo-grupo">
+                    <label for="motorista">Motorista (Matrícula):</label>
+                    <input type="text" id="motorista" name="motorista" required>
+                </div>
+            </div>
+
+            <div class="linha-campos">
+                <div class="campo-grupo">
+                    <label for="data_ocorrido">Data do Ocorrido:</label>
+                    <input type="date" id="data_ocorrido" name="data_ocorrido" required>
+                </div>
+                <div class="campo-grupo">
+                    <label for="hora_ocorrido">Hora do Ocorrido:</label>
+                    <input type="time" id="hora_ocorrido" name="hora_ocorrido" required>
+                </div>
+            </div>
+
+            <div class="campo-grupo">
+                <label for="local_ocorrencia">Local da Ocorrência:</label>
+                <input type="text" id="local_ocorrencia" name="local_ocorrencia" required placeholder="Rodovia, KM, Cidade...">
+            </div>
+
+            <div class="campo-grupo">
+                <label for="tipo_evento">Tipo de Evento:</label>
+                <select id="tipo_evento" name="tipo_evento" required>
+                    <option value="" disabled selected>Selecione...</option>
+                    <option value="Colisão Lateral">Colisão Lateral</option>
+                    <option value="Colisão com Veículo a Frente">Colisão com Veículo a Frente</option>
+                    <option value="Colisão Traseira">Colisão Traseira</option>
+                    <option value="Colisão Frontal">Colisão Frontal</option>
+                    <option value="Colisão em Marcha Ré">Colisão em Marcha Ré</option>
+                    <option value="Atropelamento de Animais">Atropelamento de Animais</option>
+                    <option value="Atropelamento de Pedestres">Atropelamento de Pedestres</option>
+                    <option value="Engarrafamento">Engarrafamento</option>
+                    <option value="Tombamento/Capotamento">Tombamento/Capotamento</option>
+                </select>
+            </div>
+
+            <div class="linha-campos">
+                <div class="campo-grupo">
+                    <label for="origem">Origem:</label>
+                    <input type="text" id="origem" name="origem" required>
+                </div>
+                <div class="campo-grupo">
+                    <label for="destino">Destino:</label>
+                    <input type="text" id="destino" name="destino" required>
+                </div>
+            </div>
+
+            <div class="linha-campos">
+                <div class="campo-grupo">
+                    <label for="data_viagem">Data da Viagem:</label>
+                    <input type="date" id="data_viagem" name="data_viagem" required>
+                </div>
+                <div class="campo-grupo">
+                    <label for="horario_viagem">Horário da Viagem:</label>
+                    <input type="time" id="horario_viagem" name="horario_viagem" required>
+                </div>
+            </div>
+
+            <div class="campo-grupo">
+                <label>Possui Sensor de Fadiga?</label>
+                <div class="radio-group">
+                    <input type="radio" name="fadiga" value="Sim" id="fSim" onclick="toggleAtivo(true)">
+                    <label for="fSim">Sim</label>
+                    <input type="radio" name="fadiga" value="Não" id="fNao" onclick="toggleAtivo(false)" checked>
+                    <label for="fNao">Não</label>
+                </div>
+            </div>
+
+            <div id="containerAtivo" style="display:none;" class="campo-grupo">
+                <label>Estava Ativo?</label>
+                <div class="radio-group">
+                    <input type="radio" name="ativo" value="Sim" id="aSim">
+                    <label for="aSim">Sim</label>
+                    <input type="radio" name="ativo" value="Não" id="aNao" checked>
+                    <label for="aNao">Não</label>
+                </div>
+            </div>
+
+            <div class="campo-grupo">
+                <label for="analista">Analista Responsável:</label>
+                <input type="text" id="analista" name="analista" required>
+            </div>
+
+            <button type="submit" id="btnGerar" class="btn-proximo">Iniciar Relatório Técnico</button>
+        </form>
+
+        <div id="tela_ocorrencia" style="display: none;">
+            <h2 class="secao-titulo">1.0 Ocorrência</h2>
+            <h2 id="modeloVeiculoDinamico" style="font-size: 14px; color: #00003c; padding: 10px; border-radius: 6px; border-left: 5px solid #00003c; background: #eef2f7; margin-bottom: 10px;">Carregando...</h2>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <h3 id="tecnologiaSeguranca" style="font-size: 11px; font-weight: bold; padding: 8px; border: 1px solid #ccc; flex: 1; text-align: center;">---</h3>
+                <h3 id="diagnosticoFadiga" style="font-size: 11px; font-weight: bold; padding: 8px; border: 1px solid #ccc; flex: 1; text-align: center;">---</h3>
+            </div>
+
+            <label style="font-size: 12px; font-weight: bold;">Resumo Automático:</label>
+            <div id="textoResumoOcorrencia" style="background: #f9f9fb; border: 1px dashed #00003c; padding: 12px; font-size: 13px; font-style: italic; margin-bottom: 15px;">Processando...</div>
+            
+            <div class="campo-grupo">
+                <label for="complemento_ocorrencia" style="font-size: 12px; font-weight: bold;">Complemento da Ocorrência:</label>
+                <textarea id="complemento_ocorrencia" rows="4" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;" placeholder="Descreva aqui os detalhes..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" onclick="voltarParaInicio()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaGPS()" class="btn-proximo">Próximo (2.0 Dados do GPS)</button>
+            </div>
+        </div>
+
+        <div id="tela_gps" style="display: none;">
+            <h2 class="secao-titulo">2.0 Dados do GPS</h2>
+            <div id="textoResumoGPS" style="background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 5px;">Aguardando...</div>
+            <textarea id="editResumoGPS" rows="4" style="display: none; width: 100%; padding: 10px; margin-bottom: 10px; font-size: 13px;"></textarea>
+            <button type="button" id="btnEditarGPS" class="btn-link">[ Editar resumo ]</button>
+            
+            <div id="areaCapturaFoto" class="quadro-foto" style="height: 200px;" tabindex="0">
+                <span class="placeholder-interno">COLE A IMAGEM GPS AQUI</span>
+                <img id="imgPreview" class="img-preview-ajuste">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="voltarParaOcorrencia()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaImagensLocal()" class="btn-proximo">Próximo (3.0 Imagens do Local)</button>
+            </div>
+        </div>
+
+        <div id="tela_imagens_local" style="display: none;">
+            <h2 class="secao-titulo">3.0 Imagens do Local</h2>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1">
+                    <label style="font-size: 11px;">Sentido do Veículo</label>
+                    <div id="areaSentidoVeiculo" class="quadro-foto" style="height: 150px;" tabindex="0">
+                        <span class="placeholder-interno">COLE A IMAGEM AQUI</span>
+                        <img id="prevSentidoVeiculo" class="img-preview-ajuste">
+                    </div>
+                </div>
+                <div style="flex:1">
+                    <label style="font-size: 11px;">Sentido Oposto</label>
+                    <div id="areaSentidoOposto" class="quadro-foto" style="height: 150px;" tabindex="0">
+                        <span class="placeholder-interno">COLE A IMAGEM AQUI</span>
+                        <img id="prevSentidoOposto" class="img-preview-ajuste">
+                    </div>
+                </div>
+            </div>
+            <div class="campo-grupo" style="margin-top: 15px;">
+                <label for="velocidade_via">Velocidade da Via:</label>
+                <select id="velocidade_via"><option value="" disabled selected>Selecione...</option></select>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="voltarParaGPS()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaGPSConclusao()" class="btn-proximo">Próximo (4.0 Dados do GPS - Conclusão)</button>
+            </div>
+        </div>
+
+        <div id="tela_gps_conclusao" style="display: none;">
+            <h2 class="secao-titulo">4.0 Dados do GPS</h2>
+            <h3 class="sub-titulo">Conclusão</h3>
+            <div id="textoResumoGPSConclusao" style="background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 5px;">Aguardando...</div>
+            <textarea id="editResumoGPSConclusao" rows="4" style="display: none; width: 100%; padding: 10px; margin-bottom: 10px; font-size: 13px;"></textarea>
+            <button type="button" id="btnEditarGPSConclusao" class="btn-link">[ Editar resumo ]</button>
+            <div id="areaCapturaFotoConclusao" class="quadro-foto" style="height: 200px;" tabindex="0">
+                <span class="placeholder-interno">COLE A IMAGEM AQUI</span>
+                <img id="prevGPSConclusao" class="img-preview-ajuste">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="voltarParaImagensLocal()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaEtapa5()" class="btn-proximo">Próximo (5.0 Fotos do Sinistro)</button>
+            </div>
+        </div>
+
+        <div id="tela_fotos_sinistro" style="display: none;">
+    <h2 class="secao-titulo">5.0 Fotos do Sinistro</h2>
+
+    <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 5px;">Orientação do Layout:</label>
+    
+    <select id="orientacao_fotos" onchange="ajustarLayoutFotos('containerFotos50', this.value)" style="margin-bottom: 25px; width: 100%;">
+        <option value="vertical">Vertical (6 fotos)</option>
+        <option value="horizontal">Horizontal (3 fotos)</option>
+    </select>
+
+    <div id="containerFotos50" class="layout-fotos-vertical" style="margin-top: 10px;">
+        <div class="campo-foto-wrapper"><div id="areaFoto50_1" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev50_1" class="img-preview-ajuste"></div></div>
+        <div class="campo-foto-wrapper"><div id="areaFoto50_2" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev50_2" class="img-preview-ajuste"></div></div>
+        <div class="campo-foto-wrapper"><div id="areaFoto50_3" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev50_3" class="img-preview-ajuste"></div></div>
+        <div class="campo-foto-wrapper"><div id="areaFoto50_4" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev50_4" class="img-preview-ajuste"></div></div>
+        <div class="campo-foto-wrapper"><div id="areaFoto50_5" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev50_5" class="img-preview-ajuste"></div></div>
+        <div class="campo-foto-wrapper"><div id="areaFoto50_6" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev50_6" class="img-preview-ajuste"></div></div>
+    </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" onclick="abrirPagina51()" class="btn-extra">+ FOTOS ADICIONAIS (5.1)</button>
+                <button type="button" onclick="irParaEtapa52()" class="btn-extra" style="background: #5c677d;">+ CÂMERA FADIGA (5.2)</button>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" onclick="voltarParaGPSConclusao()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaEtapa6()" class="btn-proximo">Próximo (6.0 Histórico de Condução)</button>
+            </div>
+        </div>
+
+        <div id="tela_fotos_sinistro_51" style="display: none;">
+            <h2 class="secao-titulo">5.1 Fotos Adicionais</h2>
+            <div id="containerFotos51" class="layout-fotos-vertical">
+                <div class="campo-foto-wrapper"><div id="areaFoto51_1" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev51_1" class="img-preview-ajuste"></div></div>
+                <div class="campo-foto-wrapper"><div id="areaFoto51_2" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev51_2" class="img-preview-ajuste"></div></div>
+                <div class="campo-foto-wrapper"><div id="areaFoto51_3" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev51_3" class="img-preview-ajuste"></div></div>
+                <div class="campo-foto-wrapper"><div id="areaFoto51_4" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev51_4" class="img-preview-ajuste"></div></div>
+                <div class="campo-foto-wrapper"><div id="areaFoto51_5" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev51_5" class="img-preview-ajuste"></div></div>
+                <div class="campo-foto-wrapper"><div id="areaFoto51_6" class="quadro-foto" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prev51_6" class="img-preview-ajuste"></div></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" onclick="voltarParaEtapa50()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaEtapa52()" class="btn-proximo">Próximo (5.2)</button>
+            </div>
+        </div>
+
+        <div id="tela_fotos_camera_52" style="display: none;">
+            <h2 class="secao-titulo">5.2 Fotos da Câmera de Fadiga</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <div style="flex:1">
+                    <div id="areaFoto52_1" class="quadro-foto" style="height: 180px;" tabindex="0">
+                        <span class="placeholder-interno">FOTO CÂMERA INTERNA</span>
+                        <img id="prev52_1" class="img-preview-ajuste">
+                    </div>
+                    <div style="margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <span style="font-size: 11px;">Câmera com Falha?</span>
+                        <label class="switch">
+                            <input type="checkbox" id="checkFalha52_1">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <div style="flex:1">
+                    <div id="areaFoto52_2" class="quadro-foto" style="height: 180px;" tabindex="0">
+                        <span class="placeholder-interno">FOTO CÂMERA EXTERNA</span>
+                        <img id="prev52_2" class="img-preview-ajuste">
+                    </div>
+                    <div style="margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <span style="font-size: 11px;">Câmera com Falha?</span>
+                        <label class="switch">
+                            <input type="checkbox" id="checkFalha52_2">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="voltarParaEtapa50()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaEtapa6Da52()" class="btn-proximo">Próximo (6.0 Histórico de Condução)</button>
+            </div>
+        </div>
+
+        <div id="tela_historico_conducao" style="display: none;">
+            <h2 class="secao-titulo">6.0 Histórico de Condução</h2>
+            <h3 class="sub-titulo">Ultimos 30 Dias</h3>
+            <div id="areaFotoHistorico" class="quadro-foto" style="height: 250px;" tabindex="0">
+                <span class="placeholder-interno">COLE A TELEMETRIA</span>
+                <img id="prevHistorico" class="img-preview-ajuste">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="voltarParaEtapa5()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaEtapa7()" class="btn-proximo">Próximo (7.0 Escala do Condutor)</button>
+            </div>
+        </div>
+
+        <div id="tela_escala_condutor" style="display: none;">
+            <h2 class="secao-titulo">7.0 Escala do Condutor</h2>
+            <h3 class="sub-titulo">10 Dias que Antecedem o Sinistro</h3>
+
+            <div id="areaFotoEscala" class="quadro-foto" style="height: 250px;" tabindex="0">
+                <span class="placeholder-interno">COLE A IMAGEM AQUI</span>
+                <img id="prevEscala" class="img-preview-ajuste">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="voltarParaEtapa6()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaEtapa8()" class="btn-proximo">Próximo (8.0 Treinamentos)</button>
+            </div>
+        </div>
+
+        <div id="tela_treinamentos" style="display: none;">
+            <h2 class="secao-titulo">8.0 Treinamentos</h2>
+            <h3 class="sub-titulo">Aderência em Curso Fixo/DDS</h3>
+            <div style="display: flex; gap: 10px;">
+                <div style="flex:1"><div id="areaTreinamento1" class="quadro-foto" style="height: 180px;" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prevTreinamento1" class="img-preview-ajuste"></div></div>
+                <div style="flex:1"><div id="areaTreinamento2" class="quadro-foto" style="height: 180px;" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prevTreinamento2" class="img-preview-ajuste"></div></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" onclick="voltarParaEtapa7()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaEtapa9()" class="btn-proximo">Próximo (9.0 Ocorrências)</button>
+            </div>
+        </div>
+
+        <div id="tela_sinistros_2526" style="display: none;">
+            <h2 class="secao-titulo">9.0 Ocorrências</h2>
+            <h3 class="sub-titulo">Sinistro 2025/2026</h3>
+            <div style="display: flex; gap: 10px;">
+                <div style="flex:1"><div id="areaSinistro25" class="quadro-foto" style="height: 180px;" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prevSinistro25" class="img-preview-ajuste"></div></div>
+                <div style="flex:1"><div id="areaSinistro26" class="quadro-foto" style="height: 180px;" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prevSinistro26" class="img-preview-ajuste"></div></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" onclick="voltarParaEtapa8()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaEtapa10()" class="btn-proximo">Próximo (10.0 Reclamações)</button>
+            </div>
+        </div>
+
+        <div id="tela_reclamacoes" style="display: none;">
+            <h2 class="secao-titulo">10.0 Reclamações de Clientes</h2>
+<h3 class="sub-titulo">Reclamações 2025/2026</h3>
+            <div style="display: flex; gap: 10px;">
+                <div style="flex:1"><div id="areaRec25" class="quadro-foto" style="height: 180px;" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prevRec25" class="img-preview-ajuste"></div></div>
+                <div style="flex:1"><div id="areaRec26" class="quadro-foto" style="height: 180px;" tabindex="0"><span class="placeholder-interno">COLE A IMAGEM AQUI</span><img id="prevRec26" class="img-preview-ajuste"></div></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" onclick="voltarParaEtapa9()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="irParaEtapa11()" class="btn-proximo">Próximo (11.0 Excessos de Velocidade)</button>
+            </div>
+        </div>
+
+        <div id="tela_excessos" style="display: none;">
+            <h2 class="secao-titulo">11.0 Excessos de Velocidade</h2>
+            <h3 class="sub-titulo">Excessos em 2025/2026</h3>
+            <div id="areaExc25" class="quadro-foto" style="height: 250px;" tabindex="0">
+                <span class="placeholder-interno">COLE A IMAGEM AQUI</span>
+                <img id="prevExc25" class="img-preview-ajuste">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="voltarParaEtapa10()" class="btn-voltar">Voltar</button>
+                <button type="button" onclick="finalizarRelatorio()" class="btn-finalizar">GERAR RELATÓRIO PDF</button>
+            </div>
+        </div>
+
+    </div>
+    <script src="script_v2.js"></script>
+</body>
+</html>
