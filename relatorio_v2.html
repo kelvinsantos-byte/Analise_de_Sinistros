@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Sinistro - Grupo JCA</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    
+    <style>
+        /* 1. RESET E CONFIGURAÇÕES DE ALTA QUALIDADE */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+        body { font-family: 'Trebuchet MS', Arial, sans-serif; background: #f0f0f0; color: #333; }
+        .fonte-calibri { font-family: Calibri, Candara, Segoe, "Segoe UI", Optima, Arial, sans-serif; }
+
+        .folha-a4 {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm;
+            margin: 10mm auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            display: block;
+            page-break-after: always;
+        }
+
+        /* 2. CONFIGURAÇÃO DE IMPRESSÃO PROFISSIONAL */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0; 
+            }
+            body { margin: 0; background: none; }
+            .folha-a4 { 
+                margin: 0; 
+                padding: 12mm;
+                box-shadow: none; 
+                width: 210mm;
+                height: 297mm;
+                page-break-after: always;
+            }
+            .btn-float-print { display: none !important; }
+            
+            .card-grafico, .box-foto-local, .aviso-texto-relatorio, .img-container-full, section {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+        }
+
+        /* 3. CAPA E CABEÇALHOS */
+        .faixa-topo, .faixa-rodape { height: 40px; background: #00003c; width: 100%; position: absolute; left: 0; }
+        .faixa-topo { top: 0; } .faixa-rodape { bottom: 0; }
+        
+        .header-logos { display: flex; align-items: center; margin-top: 25px; width: 100%; }
+        .logo-jca-black { height: 40px; margin-right: 20px; }
+        .linha-separadora { height: 2px; flex-grow: 1; background: #00003c; }
+
+        .conteudo-principal { height: 850px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .logo-io-central { width: 200px; margin-bottom: 50px; } 
+        .txt-relatorio { font-size: 48px; color: #00003c; margin: 0; font-weight: bold; text-transform: uppercase; }
+        .txt-empresa { font-size: 36px; color: #00003c; margin: 10px 0; font-weight: bold; }
+        .txt-ocorrencia-capa { font-size: 26px; color: #444; margin-top: 10px; }
+
+        .header-interno { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #00003c; padding-bottom: 8px; margin-bottom: 20px; }
+        .logo-interno { height: 30px; }
+        .titulo-header-texto { text-align: right; }
+        .titulo-header-texto h2 { margin: 0; color: #00003c; font-size: 18px; font-weight: bold; }
+        .titulo-header-texto p { margin: 0; font-size: 13px; color: #555; font-weight: bold; }
+
+        /* 4. SEÇÕES E TEXTOS */
+        .secao-titulo { font-size: 16px; font-weight: bold; margin: 15px 0 10px 0; border-left: 5px solid #00003c; padding-left: 10px; color: #00003c; background: #f8f8f8; padding-top: 5px; padding-bottom: 5px; }
+        .texto-narrativo { font-size: 13px; line-height: 1.6; text-align: justify; margin-bottom: 15px; color: #222; }
+        
+        /* 5. GRÁFICOS DE ALTA RESOLUÇÃO */
+        .card-grafico { margin-bottom: 15px; border: 1px solid #ddd; width: 100%; border-radius: 4px; overflow: hidden; }
+        .titulo-grafico-faixa { background: #555; color: white; padding: 5px 12px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .grafico-wrapper { position: relative; height: 140px; width: 100%; padding: 8px; background: #fff; }
+        canvas { width: 100% !important; height: 100% !important; }
+
+        /* 6. IMAGENS E LAYOUT */
+        .img-container-full { width: 100%; border: 1px solid #ddd; margin: 10px 0; background: #fff; text-align: center; }
+        .img-full { width: 100%; max-height: 380px; object-fit: contain; display: block; }
+        
+        .box-foto-local { border: 1px solid #ddd; margin-bottom: 10px; }
+        .foto-local-img { width: 100%; height: 300px; object-fit: cover; display: block; }
+        .legenda-foto { background: #555; color: white; padding: 6px 12px; font-size: 11px; font-weight: bold; }
+        
+        .container-velocidade-placa { display: flex; align-items: center; justify-content: space-between; margin-top: 15px; padding: 15px; border: 1px solid #eee; border-radius: 8px; }
+        .placa-velocidade { height: 90px; }
+
+        .aviso-texto-relatorio { font-size: 16px; font-weight: bold; color: #444; padding: 50px 20px; text-align: center; border: 2px dashed #ccc; background: #fafafa; margin: 20px 0; border-radius: 10px; }
+
+        .grid-fotos-relatorio { width: 100%; display: grid; gap: 10px; }
+        .layout-relatorio-vertical { grid-template-columns: repeat(2, 1fr); }
+        .layout-relatorio-horizontal { grid-template-columns: 1fr; }
+
+        /* ESTILO DA ASSINATURA */
+        .container-assinatura { margin-top: 80px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .linha-assinatura { width: 300px; border-top: 1px solid #333; margin-bottom: 5px; }
+        .nome-assinatura { font-size: 14px; font-weight: bold; color: #00003c; }
+        .cargo-assinatura { font-size: 12px; color: #555; }
+
+        .btn-float-print { position: fixed; bottom: 30px; right: 30px; padding: 15px 30px; background: #00003c; color: white; border: none; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: transform 0.2s; }
+        .btn-float-print:hover { transform: scale(1.05); background: #00005a; }
+    </style>
+</head>
+<body>
+
+    <div class="folha-a4">
+        <div class="faixa-topo"></div>
+        <header class="header-logos">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770942727/JCA_f9syze.png" class="logo-jca-black">
+            <div class="linha-separadora"></div>
+        </header>
+        <main class="conteudo-principal">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770942584/Intelig%C3%AAncia_vertical_preto_miw5ut.png" class="logo-io-central">
+            <h1 class="txt-relatorio fonte-calibri">Relatório de Sinistro</h1>
+            <h2 id="exibirEmpresa" class="txt-empresa fonte-calibri">---</h2>
+            <p class="txt-ocorrencia-capa fonte-calibri">Ocorrência: <span class="num-ocorrencia-interna">---</span></p>
+        </main>
+        <div class="faixa-rodape"></div>
+    </div>
+
+    <div class="folha-a4">
+        <header class="header-interno">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno">
+            <div class="titulo-header-texto">
+                <h2>Análise Técnica de Telemetria</h2>
+                <p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p>
+            </div>
+        </header>
+        <section>
+            <div class="secao-titulo">1. Ocorrência</div>
+            <div id="veiculoDesc" style="font-weight: bold; font-size: 14px; color: #00003c; margin-bottom: 5px;">---</div>
+            <div id="statusADAS" style="font-size: 13px; color: #555;">---</div>
+            <div id="statusFadiga" style="font-size: 13px; color: #555; margin-bottom: 10px;">---</div>
+            <div class="texto-narrativo"><span id="resumoBase"></span><span id="complementoDesc"></span></div>
+        </section>
+        
+        <div class="card-grafico">
+            <div class="titulo-grafico-faixa">Velocidade (km/h)</div>
+            <div class="grafico-wrapper"><canvas id="chartVelocidadeP2"></canvas></div>
+        </div>
+        <div class="card-grafico">
+            <div class="titulo-grafico-faixa">Rotação (RPM)</div>
+            <div class="grafico-wrapper"><canvas id="chartRPMP2"></canvas></div>
+        </div>
+        <div class="card-grafico">
+            <div class="titulo-grafico-faixa">Acelerador (%)</div>
+            <div class="grafico-wrapper"><canvas id="chartAceleradorP2"></canvas></div>
+        </div>
+        <div class="card-grafico">
+            <div class="titulo-grafico-faixa">Pedal de Freio</div>
+            <div class="grafico-wrapper"><canvas id="chartFreioP2"></canvas></div>
+        </div>
+    </div>
+
+    <div class="folha-a4">
+        <header class="header-interno">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno">
+            <div class="titulo-header-texto">
+                <h2>Análise Técnica de Telemetria</h2>
+                <p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p>
+            </div>
+        </header>
+        <section>
+            <div class="secao-titulo">2. Localização e Deslocamento</div>
+            <div id="resumoGps" class="texto-narrativo">---</div>
+            <div class="img-container-full"><img id="imgGpsRelatorio" class="img-full" src=""></div>
+            
+            <div class="card-grafico">
+                <div class="titulo-grafico-faixa">Velocidade (km/h)</div>
+                <div class="grafico-wrapper"><canvas id="chartVelocidadeP3"></canvas></div>
+            </div>
+            <div class="card-grafico">
+                <div class="titulo-grafico-faixa">Acelerador (%)</div>
+                <div class="grafico-wrapper"><canvas id="chartAceleradorP3"></canvas></div>
+            </div>
+        </section>
+    </div>
+
+    <div class="folha-a4">
+        <header class="header-interno">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno">
+            <div class="titulo-header-texto">
+                <h2>Análise Técnica de Telemetria</h2>
+                <p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p>
+            </div>
+        </header>
+        <section>
+            <div class="secao-titulo">3. Local do Sinistro</div>
+            <div class="box-foto-local">
+                <div class="legenda-foto">VISTA: SENTIDO DE DESLOCAMENTO DO VEÍCULO</div>
+                <img id="fotoSentidoV" class="foto-local-img" src="">
+            </div>
+            <div class="box-foto-local">
+                <div class="legenda-foto">VISTA: SENTIDO OPOSTO DA VIA</div>
+                <img id="fotoSentidoO" class="foto-local-img" src="">
+            </div>
+            <div class="container-velocidade-placa">
+                <div style="font-size: 16px; font-weight: bold; color: #00003c;">Velocidade máxima regulamentada no trecho:</div>
+                <img id="imgPlacaVelocidade" class="placa-velocidade" src="">
+            </div>
+        </section>
+    </div>
+
+    <div class="folha-a4">
+        <header class="header-interno">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno">
+            <div class="titulo-header-texto">
+                <h2>Análise Técnica de Telemetria</h2>
+                <p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p>
+            </div>
+        </header>
+        <section>
+            <div class="secao-titulo">4. Análise de Prévia</div>
+            <div id="resumoPrevia" class="texto-narrativo">---</div>
+            <div class="img-container-full"><img id="imgPreviaRelatorio" class="img-full" src=""></div>
+            
+            <div class="card-grafico">
+                <div class="titulo-grafico-faixa">Velocidade (km/h)</div>
+                <div class="grafico-wrapper"><canvas id="chartVelocidadeP5"></canvas></div>
+            </div>
+            <div class="card-grafico">
+                <div class="titulo-grafico-faixa">Pedal de Freio</div>
+                <div class="grafico-wrapper"><canvas id="chartFreioP5"></canvas></div>
+            </div>
+        </section>
+    </div>
+
+    <div class="folha-a4">
+        <header class="header-interno">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno">
+            <div class="titulo-header-texto"><h2>Fotos do Sinistro</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div>
+        </header>
+        <div id="gridFotos50" class="grid-fotos-relatorio"></div>
+        
+        <div class="container-assinatura">
+            <div class="linha-assinatura"></div>
+            <div class="nome-assinatura">DO.ACT.IOP – Kelvin Santos</div>
+            <div class="cargo-assinatura">Inteligência de Operações</div>
+        </div>
+    </div>
+
+    <div id="paginaCamerasRelatorio" class="folha-a4" style="display: none;">
+        <header class="header-interno">
+            <img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno">
+            <div class="titulo-header-texto"><h2>Câmeras de Segurança</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div>
+        </header>
+        <section>
+            <div id="boxCam1" style="border: 1px solid #ddd; margin-bottom: 20px; display:none;">
+                <div class="legenda-foto">CÂMERA 01 - STATUS: <span id="statusCam1">OK</span></div>
+                <img id="imgCam1" style="width:100%; height:330px; object-fit:cover;">
+            </div>
+            <div id="boxCam2" style="border: 1px solid #ddd; margin-bottom: 20px; display:none;">
+                <div class="legenda-foto">CÂMERA 02 - STATUS: <span id="statusCam2">OK</span></div>
+                <img id="imgCam2" style="width:100%; height:330px; object-fit:cover;">
+            </div>
+        </section>
+    </div>
+
+    <div class="folha-a4" id="secao6" style="display:none;">
+        <header class="header-interno"><img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno"><div class="titulo-header-texto"><h2>Histórico de Condução</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div></header>
+        <div class="secao-titulo">6.0 Histórico de Condução</div>
+        <div id="conteudo_secao6"><img id="rel_img_6" style="width:100%; border:1px solid #ddd;"></div>
+    </div>
+
+    <div class="folha-a4" id="secao7" style="display:none;">
+        <header class="header-interno"><img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno"><div class="titulo-header-texto"><h2>Escala do Condutor</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div></header>
+        <div class="secao-titulo">7.0 Escala do Condutor</div>
+        <div id="conteudo_secao7"><img id="rel_img_7" style="width:100%; border:1px solid #ddd;"></div>
+    </div>
+
+    <div class="folha-a4" id="secao8" style="display:none;">
+        <header class="header-interno"><img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno"><div class="titulo-header-texto"><h2>Treinamentos</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div></header>
+        <div class="secao-titulo">8.0 Treinamentos</div>
+        <div id="conteudo_secao8">
+            <div id="box8_1" style="display:none; margin-bottom:15px;"><div class="legenda-foto">DDS</div><img id="rel_img_8_1" style="width:100%; border:1px solid #ddd;"></div>
+            <div id="box8_2" style="display:none;"><div class="legenda-foto">CURSO ESPECÍFICO</div><img id="rel_img_8_2" style="width:100%; border:1px solid #ddd;"></div>
+        </div>
+    </div>
+
+    <div class="folha-a4" id="secao9" style="display:none;">
+        <header class="header-interno"><img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno"><div class="titulo-header-texto"><h2>Histórico de Sinistros</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div></header>
+        <div class="secao-titulo">9.0 Histórico de Ocorrências</div>
+        <div id="conteudo_secao9">
+            <div id="box9_1" style="display:none; margin-bottom:15px;"><img id="rel_img_9_1" style="width:100%; border:1px solid #ddd;"></div>
+            <div id="box9_2" style="display:none;"><img id="rel_img_9_2" style="width:100%; border:1px solid #ddd;"></div>
+        </div>
+    </div>
+
+    <div class="folha-a4" id="secao10" style="display:none;">
+        <header class="header-interno"><img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno"><div class="titulo-header-texto"><h2>Reclamações</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div></header>
+        <div class="secao-titulo">10.0 Reclamações de Clientes</div>
+        <div id="conteudo_secao10">
+            <div id="box10_1" style="display:none; margin-bottom:15px;"><img id="rel_img_10_1" style="width:100%; border:1px solid #ddd;"></div>
+            <div id="box10_2" style="display:none;"><img id="rel_img_10_2" style="width:100%; border:1px solid #ddd;"></div>
+        </div>
+    </div>
+
+    <div class="folha-a4" id="secao11" style="display:none;">
+        <header class="header-interno"><img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno"><div class="titulo-header-texto"><h2>Telemetria Crítica</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div></header>
+        <div class="secao-titulo">11.0 Excessos de Velocidade</div>
+        <div id="conteudo_secao11">
+            <div id="box11_1" style="display:none; margin-bottom:15px;"><img id="rel_img_11_1" style="width:100%; border:1px solid #ddd;"></div>
+            <div id="box11_2" style="display:none;"><img id="rel_img_11_2" style="width:100%; border:1px solid #ddd;"></div>
+        </div>
+    </div>
+
+    <div class="folha-a4" id="secao12" style="display:none;">
+        <header class="header-interno"><img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno"><div class="titulo-header-texto"><h2>Multas</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div></header>
+        <div class="secao-titulo">12.0 Multas de Trânsito</div>
+        <div id="conteudo_secao12">
+            <div id="box12_unica" style="display:none;"><img id="rel_img_12" style="width:100%; border:1px solid #ddd;"></div>
+        </div>
+    </div>
+
+    <button onclick="window.print()" class="btn-float-print">Gerar Relatório (PDF)</button>
+
+    <script>
+    Chart.register(ChartDataLabels);
+
+    window.onload = function() {
+        Chart.defaults.devicePixelRatio = 3; 
+
+        const prefixo = localStorage.getItem('rel_prefixo') || "0000";
+        const dataOcorrido = localStorage.getItem('rel_data_ocorrido') || "";
+        const dataLimpa = dataOcorrido.replace(/\D/g, "");
+        const idOcorrencia = `${dataLimpa} - ${prefixo}`;
+
+        document.querySelectorAll('.num-ocorrencia-interna').forEach(el => el.innerText = idOcorrencia);
+        document.getElementById('exibirEmpresa').innerText = localStorage.getItem('rel_empresa') || "---";
+        
+        const modelo = localStorage.getItem('rel_modelo') || "";
+        const ano = localStorage.getItem('rel_ano') || "";
+        document.getElementById('veiculoDesc').innerText = `VEÍCULO: ${prefixo} | MODELO: ${modelo} | ANO: ${ano}`;
+        
+        document.getElementById('statusADAS').innerText = "TECNOLOGIA ADAS: " + (localStorage.getItem('rel_tecnologia_adas') || "NÃO INFORMADO");
+        document.getElementById('statusFadiga').innerText = "SENSOR DE FADIGA: " + (localStorage.getItem('rel_txt_fadiga') || "NÃO INFORMADO");
+        
+        document.getElementById('resumoBase').innerText = localStorage.getItem('rel_resumo_base') || "";
+        document.getElementById('complementoDesc').innerText = " " + (localStorage.getItem('rel_complemento_ocorrencia') || "");
+        document.getElementById('resumoGps').innerText = localStorage.getItem('rel_gps_resumo') || "";
+        document.getElementById('imgGpsRelatorio').src = localStorage.getItem('rel_foto_gps') || "";
+        document.getElementById('resumoPrevia').innerText = localStorage.getItem('rel_previa_resumo') || "";
+        document.getElementById('imgPreviaRelatorio').src = localStorage.getItem('rel_foto_previa') || "";
+        document.getElementById('fotoSentidoV').src = localStorage.getItem('rel_foto_sentido_v') || "";
+        document.getElementById('fotoSentidoO').src = localStorage.getItem('rel_foto_sentido_o') || "";
+
+        const vPlaca = localStorage.getItem('rel_velocidade_via');
+        if (vPlaca) {
+            const MAPA_PLACAS = {
+                "10 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125015/10-KM_nqp8w3.png",
+                "20 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125058/20-KM_oooee5.png",
+                "30 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125094/30-KM_m19xjc.png",
+                "40 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125134/40-KM_ttgytr.png",
+                "50 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771885734/50-km_1_i5yzut.png",
+                "60 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125233/60-KM_v85guf.png",
+                "70 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125274/70-KM_vpxnuv.png",
+                "80 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125315/80-KM_mo4lwv.png",
+                "90 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125362/90-KM_f0clah.png",
+                "100 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125408/100-KM_a5yt96.png",
+                "110 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125458/110-KM_jzorf3.png",
+                "120 km/h": "https://res.cloudinary.com/dxnruvmgu/image/upload/v1771125497/120-KM_wrseza.png"
+            };
+            if(MAPA_PLACAS[vPlaca]) document.getElementById('imgPlacaVelocidade').src = MAPA_PLACAS[vPlaca];
+        }
+
+        const fCam1 = localStorage.getItem('rel_foto_52_1');
+        const fCam2 = localStorage.getItem('rel_foto_52_2');
+        if ((fCam1 && fCam1.length > 100) || (fCam2 && fCam2.length > 100)) {
+            document.getElementById('paginaCamerasRelatorio').style.display = 'block';
+            if (fCam1) { 
+                document.getElementById('boxCam1').style.display = 'block'; 
+                document.getElementById('imgCam1').src = fCam1; 
+                document.getElementById('statusCam1').innerText = localStorage.getItem('rel_falha_camera_1') || "OK"; 
+            }
+            if (fCam2) { 
+                document.getElementById('boxCam2').style.display = 'block'; 
+                document.getElementById('imgCam2').src = fCam2; 
+                document.getElementById('statusCam2').innerText = localStorage.getItem('rel_falha_camera_2') || "OK"; 
+            }
+        }
+
+        const configSecoes = [
+            {id: 'secao6', sw: 'rel_exibir_etapa6', cont: 'conteudo_secao6', imgs: [{k: 'rel_foto_historico', i: 'rel_img_6'}]},
+            {id: 'secao7', sw: 'rel_exibir_etapa7', cont: 'conteudo_secao7', imgs: [{k: 'rel_foto_escala', i: 'rel_img_7'}]},
+            {id: 'secao8', sw: 'rel_exibir_etapa8', cont: 'conteudo_secao8', imgs: [{k: 'rel_foto_treinamento_1', i: 'rel_img_8_1', b:'box8_1'}, {k: 'rel_foto_treinamento_2', i: 'rel_img_8_2', b:'box8_2'}]},
+            {id: 'secao9', sw: 'rel_exibir_etapa9', cont: 'conteudo_secao9', imgs: [{k: 'rel_foto_sinistro_2025', i: 'rel_img_9_1', b:'box9_1'}, {k: 'rel_foto_sinistro_2026', i: 'rel_img_9_2', b:'box9_2'}]},
+            {id: 'secao10', sw: 'rel_exibir_etapa10', cont: 'conteudo_secao10', imgs: [{k: 'rel_foto_rec_2025', i: 'rel_img_10_1', b:'box10_1'}, {k: 'rel_foto_rec_2026', i: 'rel_img_10_2', b:'box10_2'}]},
+            {id: 'secao11', sw: 'rel_exibir_etapa11', cont: 'conteudo_secao11', imgs: [{k: 'rel_foto_exc_2025', i: 'rel_img_11_1', b:'box11_1'}, {k: 'rel_foto_exc_2026', i: 'rel_img_11_2', b:'box11_2'}]},
+            {id: 'secao12', sw: 'rel_exibir_etapa12', cont: 'conteudo_secao12', imgs: [{k: 'rel_foto_multas', i: 'rel_img_12', b:'box12_unica'}]}
+        ];
+
+        configSecoes.forEach(s => {
+            const ativo = localStorage.getItem(s.sw);
+            const container = document.getElementById(s.cont);
+            if (ativo === "Não") {
+                const msg = localStorage.getItem('rel_txt_ausencia_' + s.id.replace('secao','')) || "Informação não disponível ou não aplicável.";
+                container.innerHTML = `<div class="aviso-texto-relatorio">${msg}</div>`;
+                document.getElementById(s.id).style.display = "block";
+            } else {
+                let temDados = false;
+                s.imgs.forEach(img => {
+                    const data = localStorage.getItem(img.k);
+                    if (data && data.length > 100) {
+                        const el = document.getElementById(img.i);
+                        el.src = data;
+                        if(img.b) document.getElementById(img.b).style.display = "block";
+                        temDados = true;
+                    }
+                });
+                if(temDados) document.getElementById(s.id).style.display = "block";
+            }
+        });
+
+        renderizarGridFotos('gridFotos50', 'rel_foto_50_');
+        carregarGraficos();
+    }
+
+    function renderizarGridFotos(containerId, prefixoChave) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        let orientacao = localStorage.getItem('rel_layout_fotos') || 'vertical';
+        container.className = 'grid-fotos-relatorio ' + (orientacao === 'vertical' ? 'layout-relatorio-vertical' : 'layout-relatorio-horizontal');
+        let html = '';
+        for (let i = 1; i <= 6; i++) {
+            const foto = localStorage.getItem(prefixoChave + i);
+            if (foto && foto.length > 100) {
+                html += `<div style="border:1px solid #ddd; background:#fff; padding:4px;"><img src="${foto}" style="width:100%; height:${orientacao==='vertical'?'260px':'auto'}; object-fit:contain; display:block;"></div>`;
+            }
+        }
+        if (html === '') container.closest('.folha-a4').style.display = 'none';
+        else container.innerHTML = html;
+    }
+
+    function carregarGraficos() {
+        const labelsRaw = JSON.parse(localStorage.getItem('rel_grafico_labels')) || [];
+        const labels = labelsRaw.map(l => (l && l.includes(' ')) ? l.split(' ') : l);
+        const dVel = JSON.parse(localStorage.getItem('rel_grafico_vel')) || [];
+        const dRPM = JSON.parse(localStorage.getItem('rel_grafico_rpm')) || [];
+        const dAce = JSON.parse(localStorage.getItem('rel_grafico_ace')) || [];
+        const dFre = JSON.parse(localStorage.getItem('rel_grafico_fre')) || [];
+        
+        const commonOptions = {
+            responsive: true, 
+            maintainAspectRatio: false, 
+            animation: false,
+            devicePixelRatio: 3,
+            layout: { padding: { top: 15 } },
+            plugins: { 
+                legend: { display: false }, 
+                datalabels: { 
+                    display: true, 
+                    align: 'top', 
+                    anchor: 'end', 
+                    offset: 2,
+                    overlap: true,
+                    clamp: true,
+                    color: '#000', 
+                    font: { weight: 'bold', size: 8.5 },
+                    formatter: (v) => v > 0 ? Math.round(v) : '' 
+                } 
+            },
+            scales: { 
+                x: { ticks: { font: { size: 8, weight: 'bold' }, maxRotation: 0 }, grid: { display: false } }, 
+                y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { font: { size: 8 } } } 
+            }
+        };
+
+        const cleanOptions = JSON.parse(JSON.stringify(commonOptions));
+        cleanOptions.scales.y = { 
+            beginAtZero: true, 
+            display: false, 
+            grid: { display: false } 
+        };
+
+        ["P2", "P3", "P5"].forEach(pg => {
+            if(document.getElementById(`chartVelocidade${pg}`)) {
+                new Chart(document.getElementById(`chartVelocidade${pg}`), { 
+                    type:'line', 
+                    data:{labels, datasets:[{data:dVel, borderColor:'#00003c', borderWidth:2.5, tension:0.3, fill:false, pointRadius:3, pointBackgroundColor:'#00003c'}]}, 
+                    options: commonOptions
+                });
+            }
+
+            if(document.getElementById(`chartRPM${pg}`)) {
+                new Chart(document.getElementById(`chartRPM${pg}`), { 
+                    type:'line', 
+                    data:{labels, datasets:[{data:dRPM, borderColor:'#237804', borderWidth:2, tension:0.3, fill:false, pointRadius:2}]}, 
+                    options: commonOptions
+                });
+            }
+
+            if(document.getElementById(`chartAcelerador${pg}`)) {
+                new Chart(document.getElementById(`chartAcelerador${pg}`), { 
+                    type:'bar', 
+                    data:{labels, datasets:[{data:dAce, backgroundColor:'#5ea2a6', borderRadius: 2}]}, 
+                    options: cleanOptions
+                });
+            }
+
+            if(document.getElementById(`chartFreio${pg}`)) {
+                new Chart(document.getElementById(`chartFreio${pg}`), { 
+                    type:'bar', 
+                    data:{labels, datasets:[{data:dFre, backgroundColor:'#e84c4c', borderRadius: 2}]}, 
+                    options: cleanOptions
+                });
+            }
+        });
+    }
+    </script>
+</body>
+</html>
