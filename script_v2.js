@@ -21,10 +21,111 @@ window.toggleAtivo = function(mostrar) {
     if (container) container.style.display = mostrar ? 'block' : 'none';
 }
 
-// =========================================================
-// GESTÃO DE GRÁFICOS (REPLICAÇÃO NAS ETAPAS 1, 2 E 4)
-// =========================================================
+window.toggleAtivoMultas = function(mostrar) {
+    const container = document.getElementById('containerMultas');
+    if (container) container.style.display = mostrar ? 'block' : 'none';
+}
 
+function validarEtapaComSwitch(idSwitch, storageKeyFoto, nomeEtapa, relExibirKey) {
+    const sw = document.getElementById(idSwitch);
+    const isAtivo = sw && sw.checked;
+
+    if (isAtivo) {
+        const foto = localStorage.getItem(storageKeyFoto);
+        if (!foto) {
+            alert(`⚠️ Atenção: O switch de "${nomeEtapa}" está ATIVO, mas nenhuma imagem foi detectada. Cole ou arraste a imagem ou desative o botão para continuar.`);
+            return false;
+        }
+        localStorage.setItem(relExibirKey, "Sim");
+    } else {
+        localStorage.setItem(relExibirKey, "Não");
+        localStorage.setItem(storageKeyFoto, `Condutor não possui ${nomeEtapa} no período de 2025/2026`);
+    }
+    return true;
+}
+
+// --- NOVO SISTEMA DE TRATAMENTO DE IMAGEM (DRAG & DROP + PASTE) ---
+
+function processarImagem(file, prevId, storageKey, areaId) {
+    if (!file || !file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width, height = img.height;
+            const MAX_WIDTH = 800; 
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+            const prev = document.getElementById(prevId);
+            const area = document.getElementById(areaId);
+
+            if (prev) {
+                prev.src = compressedBase64;
+                prev.style.display = "block";
+            }
+            if (area) {
+                const ph = area.querySelector('.placeholder-interno');
+                if (ph) ph.style.display = "none";
+            }
+            localStorage.setItem(storageKey, compressedBase64);
+        };
+    };
+    reader.readAsDataURL(file);
+}
+
+function configurarCapturaImagem(idArea, idPreview, storageKey) {
+    const area = document.getElementById(idArea);
+    if (!area) return;
+
+    // 1. Evento de Colar (Paste)
+    area.addEventListener('paste', (e) => {
+        const itens = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let i = 0; i < itens.length; i++) {
+            if (itens[i].type.indexOf("image") !== -1) {
+                processarImagem(itens[i].getAsFile(), idPreview, storageKey, idArea);
+            }
+        }
+    });
+
+    // 2. Eventos de Arrastar (Drag & Drop)
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        area.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        area.addEventListener(eventName, () => {
+            area.style.borderColor = '#00003c';
+            area.style.backgroundColor = '#f0f0ff';
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        area.addEventListener(eventName, () => {
+            area.style.borderColor = ''; 
+            area.style.backgroundColor = '';
+        }, false);
+    });
+
+    area.addEventListener('drop', (e) => {
+        const file = e.dataTransfer.files[0];
+        processarImagem(file, idPreview, storageKey, idArea);
+    });
+
+    // Mantém o clique para dar foco (necessário para o Paste funcionar)
+    area.onclick = () => area.focus();
+}
+
+// 3. GESTÃO DE GRÁFICOS
 async function carregarDadosTelemetria() {
     try {
         const response = await fetch(URL_TELEMETRIA_CSV + "&t=" + new Date().getTime());
@@ -58,8 +159,13 @@ async function carregarDadosTelemetria() {
         });
 
         dadosTelemetriaCache = { labels, dVel, dRPM, dAce, dFreio };
-        atualizarInterfaceGraficos(""); 
+        localStorage.setItem('rel_grafico_labels', JSON.stringify(labels));
+        localStorage.setItem('rel_grafico_vel', JSON.stringify(dVel));
+        localStorage.setItem('rel_grafico_rpm', JSON.stringify(dRPM));
+        localStorage.setItem('rel_grafico_ace', JSON.stringify(dAce));
+        localStorage.setItem('rel_grafico_fre', JSON.stringify(dFreio));
 
+        atualizarInterfaceGraficos(""); 
     } catch (err) { 
         console.error("Erro na Telemetria:", err);
     }
@@ -67,7 +173,6 @@ async function carregarDadosTelemetria() {
 
 function atualizarInterfaceGraficos(sufixo) {
     if (!dadosTelemetriaCache) return;
-
     let containerId, telaPaiId, elementoAncoragemId;
 
     if (sufixo === "") {
@@ -84,14 +189,24 @@ function atualizarInterfaceGraficos(sufixo) {
         elementoAncoragemId = 'areaCapturaFotoConclusao';
     }
 
-    criarEstruturaGraficos(containerId, telaPaiId, elementoAncoragemId, sufixo);
+    let oldContainer = document.getElementById(containerId);
+    if(oldContainer) oldContainer.remove();
 
+    criarEstruturaGraficos(containerId, telaPaiId, elementoAncoragemId, sufixo);
     const { labels, dVel, dRPM, dAce, dFreio } = dadosTelemetriaCache;
 
-    renderizarGrafico('chartVelocidade' + sufixo, 'line', labels, dVel, '#00003c', 'Velocidade', true);
-    renderizarGrafico('chartRPM' + sufixo, 'line', labels, dRPM, '#237804', 'RPM', true);
-    renderizarGrafico('chartAcelerador' + sufixo, 'bar', labels, dAce, '#5ea2a6', 'Acelerador %', false);
-    renderizarGrafico('chartFreio' + sufixo, 'bar', labels, dFreio, '#e84c4c', 'Pedal de Freio', false);
+    if (sufixo === "") {
+        renderizarGrafico('chartVelocidade' + sufixo, 'line', labels, dVel, '#00003c', 'Velocidade', true);
+        renderizarGrafico('chartRPM' + sufixo, 'line', labels, dRPM, '#237804', 'RPM', true);
+        renderizarGrafico('chartAcelerador' + sufixo, 'bar', labels, dAce, '#5ea2a6', 'Acelerador %', false);
+        renderizarGrafico('chartFreio' + sufixo, 'bar', labels, dFreio, '#e84c4c', 'Pedal de Freio', false);
+    } else if (sufixo === "_gps") {
+        renderizarGrafico('chartVelocidade' + sufixo, 'line', labels, dVel, '#00003c', 'Velocidade', true);
+        renderizarGrafico('chartAcelerador' + sufixo, 'bar', labels, dAce, '#5ea2a6', 'Acelerador %', false);
+    } else if (sufixo === "_conclusao") {
+        renderizarGrafico('chartVelocidade' + sufixo, 'line', labels, dVel, '#00003c', 'Velocidade', true);
+        renderizarGrafico('chartFreio' + sufixo, 'bar', labels, dFreio, '#e84c4c', 'Pedal de Freio', false);
+    }
 }
 
 function criarEstruturaGraficos(containerId, telaId, ancoragemId, sufixo) {
@@ -101,12 +216,25 @@ function criarEstruturaGraficos(containerId, telaId, ancoragemId, sufixo) {
         container.id = containerId;
         container.style.cssText = "margin-top: 20px; display: flex; flex-direction: column; gap: 12px; max-width: 800px;";
         
-        const secoes = [
-            {id: 'chartVelocidade' + sufixo, tit: 'Velocidade'},
-            {id: 'chartRPM' + sufixo, tit: 'RPM'},
-            {id: 'chartAcelerador' + sufixo, tit: 'Acelerador %'},
-            {id: 'chartFreio' + sufixo, tit: 'Pedal de Freio'}
-        ];
+        let secoes = [];
+        if (sufixo === "") {
+            secoes = [
+                {id: 'chartVelocidade' + sufixo, tit: 'Velocidade'},
+                {id: 'chartRPM' + sufixo, tit: 'RPM'},
+                {id: 'chartAcelerador' + sufixo, tit: 'Acelerador %'},
+                {id: 'chartFreio' + sufixo, tit: 'Pedal de Freio'}
+            ];
+        } else if (sufixo === "_gps") {
+            secoes = [
+                {id: 'chartVelocidade' + sufixo, tit: 'Velocidade'},
+                {id: 'chartAcelerador' + sufixo, tit: 'Acelerador %'}
+            ];
+        } else if (sufixo === "_conclusao") {
+            secoes = [
+                {id: 'chartVelocidade' + sufixo, tit: 'Velocidade'},
+                {id: 'chartFreio' + sufixo, tit: 'Pedal de Freio'}
+            ];
+        }
 
         container.innerHTML = secoes.map(s => `
             <div style="border: 1px solid #ccc; background: #fff;">
@@ -117,7 +245,6 @@ function criarEstruturaGraficos(containerId, telaId, ancoragemId, sufixo) {
             </div>
         `).join('');
 
-        const tela = document.getElementById(telaId);
         const alvo = document.getElementById(ancoragemId);
         if (alvo && alvo.parentNode) {
              alvo.parentNode.insertBefore(container, alvo.nextSibling);
@@ -129,7 +256,6 @@ function renderizarGrafico(id, tipo, labels, data, cor, titulo, mostrarPontos) {
     const canvas = document.getElementById(id);
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
     if (charts[id]) charts[id].destroy();
 
     const isPedal = id.includes('Acelerador') || id.includes('Freio');
@@ -165,43 +291,36 @@ function renderizarGrafico(id, tipo, labels, data, cor, titulo, mostrarPontos) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            events: [], 
+            animation: false, 
             plugins: {
                 legend: { display: false },
                 tooltip: { enabled: false } 
             },
-            layout: {
-                padding: { top: 30, left: 10, right: 10, bottom: 5 }
-            },
+            layout: { padding: { top: 30, left: 10, right: 10, bottom: 5 } },
             scales: {
                 y: { 
                     display: !isPedal,
                     beginAtZero: true,
-                    suggestedMax: Math.max(...data) * 1.2,
+                    suggestedMax: data.length ? Math.max(...data) * 1.2 : 100,
                     grid: { color: '#f5f5f5' },
                     ticks: { font: { size: 9 } }
                 },
                 x: { 
                     grid: { display: false },
-                    ticks: { 
-                        font: { size: 8 },
-                        color: '#444',
-                        maxRotation: 0,
-                        autoSkip: false 
-                    } 
+                    ticks: { font: { size: 8 }, color: '#444', maxRotation: 0, autoSkip: false } 
                 }
             }
         }
     });
 }
 
-// 3. NAVEGAÇÃO ENTRE ETAPAS
+// 4. NAVEGAÇÃO ENTRE ETAPAS
 window.voltarParaInicio = () => { 
     document.getElementById('tela_ocorrencia').style.display = 'none'; 
     document.getElementById('formSinistro').style.display = 'block'; 
 };
 
-window.irParaGPS = () => { 
+window.salvarEIrParaGPS = () => { 
     const complemento = document.getElementById('complemento_ocorrencia').value;
     localStorage.setItem('rel_complemento_ocorrencia', complemento);
     document.getElementById('tela_ocorrencia').style.display = 'none'; 
@@ -222,7 +341,7 @@ window.irParaImagensLocal = function() {
 };
 
 window.voltarParaGPS = () => { 
-    document.getElementById('tela_imagens_local').style.display = 'none'; 
+    document.getElementById('tela_gps').style.display = 'none'; 
     document.getElementById('tela_gps').style.display = 'block'; 
     setTimeout(() => { atualizarInterfaceGraficos("_gps"); }, 150);
 };
@@ -231,12 +350,12 @@ window.irParaGPSConclusao = function() {
     const vel = document.getElementById('velocidade_via').value;
     const f1 = localStorage.getItem('rel_foto_sentido_v');
     const f2 = localStorage.getItem('rel_foto_sentido_o');
-    if (!f1 || f1.length < 100 || !f2 || f2.length < 100) return alert("⚠️ Cole as fotos do local (3.0)");
+    if (!f1 || !f2) return alert("⚠️ Cole as fotos do local (3.0)");
     if (!vel) return alert("⚠️ Selecione a velocidade da via.");
+    
     localStorage.setItem('rel_velocidade_via', vel);
     document.getElementById('tela_imagens_local').style.display = 'none';
     document.getElementById('tela_gps_conclusao').style.display = 'block';
-    // GATILHO PARA ETAPA 4.0
     setTimeout(() => { atualizarInterfaceGraficos("_conclusao"); }, 150);
 };
 
@@ -246,8 +365,8 @@ window.voltarParaImagensLocal = () => {
 };
 
 window.irParaEtapa5 = function() {
-    const f = localStorage.getItem('rel_foto_gps_conclusao');
-    if (!f || f.length < 100) return alert("⚠️ Anexe a imagem do GPS Conclusão (4.0)");
+    const f = localStorage.getItem('rel_foto_previa'); 
+    if (!f) return alert("⚠️ Anexe a imagem do GPS Conclusão (4.0)");
     document.getElementById('tela_gps_conclusao').style.display = 'none';
     document.getElementById('tela_fotos_sinistro').style.display = 'block';
 };
@@ -258,246 +377,218 @@ window.voltarParaGPSConclusao = () => {
     setTimeout(() => { atualizarInterfaceGraficos("_conclusao"); }, 150);
 };
 
-window.abrirPagina51 = () => {
-    document.getElementById('tela_fotos_sinistro').style.display = 'none';
-    document.getElementById('tela_fotos_sinistro_51').style.display = 'block';
+window.irParaEtapa52 = () => { 
+    document.getElementById('tela_fotos_sinistro').style.display = 'none'; 
+    document.getElementById('tela_fotos_camera_52').style.display = 'block'; 
 };
 
-window.voltarParaEtapa50 = () => {
-    document.getElementById('tela_fotos_sinistro_51').style.display = 'none';
-    document.getElementById('tela_fotos_camera_52').style.display = 'none';
-    document.getElementById('tela_fotos_sinistro').style.display = 'block';
+window.irParaEtapa6Da52 = () => { 
+    const checkboxHabilitar = document.getElementById('checkHabilitarEtapa52');
+    const deveExibir = (checkboxHabilitar && checkboxHabilitar.checked) ? 'Sim' : 'Não';
+    
+    if (deveExibir === 'Sim') {
+        if(!localStorage.getItem('rel_foto_52_1') || !localStorage.getItem('rel_foto_52_2')) {
+            return alert("⚠️ Etapa 5.2 ativa: Por favor, anexe as imagens das câmeras.");
+        }
+    }
+
+    localStorage.setItem('rel_exibir_cameras', deveExibir);
+    localStorage.setItem('rel_falha_camera_1', document.getElementById('checkFalha52_1').checked ? "FALHA" : "OK");
+    localStorage.setItem('rel_falha_camera_2', document.getElementById('checkFalha52_2').checked ? "FALHA" : "OK");
+    document.getElementById('tela_fotos_camera_52').style.display = 'none'; 
+    document.getElementById('tela_historico_conducao').style.display = 'block'; 
 };
 
-window.irParaEtapa52 = function() {
-    document.getElementById('tela_fotos_sinistro').style.display = 'none';
-    document.getElementById('tela_fotos_sinistro_51').style.display = 'none';
-    document.getElementById('tela_fotos_camera_52').style.display = 'block';
+window.irParaEtapa6 = () => { 
+    localStorage.setItem('rel_exibir_cameras', 'Não');
+    document.getElementById('tela_fotos_sinistro').style.display = 'none'; 
+    document.getElementById('tela_historico_conducao').style.display = 'block'; 
 };
 
-window.irParaEtapa6 = function() {
-    document.getElementById('tela_fotos_sinistro').style.display = 'none';
-    document.getElementById('tela_fotos_sinistro_51').style.display = 'none';
-    document.getElementById('tela_historico_conducao').style.display = 'block';
+window.voltarParaEtapa5 = () => { 
+    document.getElementById('tela_historico_conducao').style.display = 'none'; 
+    document.getElementById('tela_fotos_sinistro').style.display = 'block'; 
 };
 
-window.irParaEtapa6Da52 = function() {
-    const falhaS1 = document.getElementById('checkFalha52_1').checked ? "FALHA" : "OK";
-    const falhaS2 = document.getElementById('checkFalha52_2').checked ? "FALHA" : "OK";
-    localStorage.setItem('rel_falha_camera_1', falhaS1);
-    localStorage.setItem('rel_falha_camera_2', falhaS2);
-    document.getElementById('tela_fotos_camera_52').style.display = 'none';
-    document.getElementById('tela_historico_conducao').style.display = 'block';
+window.irParaEtapa7 = () => { 
+    if (!validarEtapaComSwitch('checkPossuiEtapa6', 'rel_foto_historico', 'Histórico de Condução', 'rel_exibir_etapa6')) return;
+    document.getElementById('tela_historico_conducao').style.display = 'none'; 
+    document.getElementById('tela_escala_condutor').style.display = 'block'; 
 };
 
-window.voltarParaEtapa5 = () => {
-    document.getElementById('tela_historico_conducao').style.display = 'none';
-    document.getElementById('tela_fotos_sinistro').style.display = 'block';
+window.voltarParaEtapa6 = () => { 
+    document.getElementById('tela_escala_condutor').style.display = 'none'; 
+    document.getElementById('tela_historico_conducao').style.display = 'block'; 
 };
 
-window.irParaEtapa7 = function() {
-    const fotoHist = localStorage.getItem('rel_foto_historico');
-    if (!fotoHist || fotoHist.length < 100) return alert("⚠️ O Histórico não foi detectado.");
-    document.getElementById('tela_historico_conducao').style.display = 'none';
-    document.getElementById('tela_escala_condutor').style.display = 'block';
+window.irParaEtapa8 = () => { 
+    if (!validarEtapaComSwitch('checkPossuiEtapa7', 'rel_foto_escala', 'Escala do Condutor', 'rel_exibir_etapa7')) return;
+    document.getElementById('tela_escala_condutor').style.display = 'none'; 
+    document.getElementById('tela_treinamentos').style.display = 'block'; 
 };
 
-window.voltarParaEtapa6 = () => {
-    document.getElementById('tela_escala_condutor').style.display = 'none';
-    document.getElementById('tela_historico_conducao').style.display = 'block';
+window.voltarParaEtapa7 = () => { 
+    document.getElementById('tela_treinamentos').style.display = 'none'; 
+    document.getElementById('tela_escala_condutor').style.display = 'block'; 
 };
 
-window.irParaEtapa8 = function() {
-    const fotoEscala = localStorage.getItem('rel_foto_escala');
-    if (!fotoEscala || fotoEscala.length < 100) return alert("⚠️ A Escala não foi detectada.");
-    document.getElementById('tela_escala_condutor').style.display = 'none';
-    document.getElementById('tela_treinamentos').style.display = 'block';
+window.irParaEtapa9 = () => { 
+    if (!validarEtapaComSwitch('checkPossuiEtapa8', 'rel_foto_treinamento_1', 'Treinamentos', 'rel_exibir_etapa8')) return;
+    document.getElementById('tela_treinamentos').style.display = 'none'; 
+    document.getElementById('tela_sinistros_2526').style.display = 'block'; 
 };
 
-window.voltarParaEtapa7 = () => {
-    document.getElementById('tela_treinamentos').style.display = 'none';
-    document.getElementById('tela_escala_condutor').style.display = 'block';
+window.voltarParaEtapa8 = () => { 
+    document.getElementById('tela_sinistros_2526').style.display = 'none'; 
+    document.getElementById('tela_treinamentos').style.display = 'block'; 
 };
 
-window.irParaEtapa9 = function() {
-    document.getElementById('tela_treinamentos').style.display = 'none';
-    document.getElementById('tela_sinistros_2526').style.display = 'block';
+window.irParaEtapa10 = () => { 
+    if (!validarEtapaComSwitch('checkPossuiEtapa9', 'rel_foto_sinistro_2025', 'Sinistros Anteriores', 'rel_exibir_etapa9')) return;
+    document.getElementById('tela_sinistros_2526').style.display = 'none'; 
+    document.getElementById('tela_reclamacoes').style.display = 'block'; 
 };
 
-window.voltarParaEtapa8 = () => {
-    document.getElementById('tela_sinistros_2526').style.display = 'none';
-    document.getElementById('tela_treinamentos').style.display = 'block';
+window.voltarParaEtapa9 = () => { 
+    document.getElementById('tela_reclamacoes').style.display = 'none'; 
+    document.getElementById('tela_sinistros_2526').style.display = 'block'; 
 };
 
-window.irParaEtapa10 = function() {
-    document.getElementById('tela_sinistros_2526').style.display = 'none';
-    document.getElementById('tela_reclamacoes').style.display = 'block';
+window.irParaEtapa11 = () => { 
+    if (!validarEtapaComSwitch('checkPossuiEtapa10', 'rel_foto_rec_2025', 'Reclamações', 'rel_exibir_etapa10')) return;
+    document.getElementById('tela_reclamacoes').style.display = 'none'; 
+    document.getElementById('tela_excessos').style.display = 'block'; 
 };
 
-window.voltarParaEtapa9 = () => {
-    document.getElementById('tela_reclamacoes').style.display = 'none';
-    document.getElementById('tela_sinistros_2526').style.display = 'block';
+window.voltarParaEtapa10 = () => { 
+    document.getElementById('tela_excessos').style.display = 'none'; 
+    document.getElementById('tela_reclamacoes').style.display = 'block'; 
 };
 
-window.irParaEtapa11 = function() {
-    document.getElementById('tela_reclamacoes').style.display = 'none';
-    document.getElementById('tela_excessos').style.display = 'block';
+window.irParaEtapa12 = () => { 
+    if (!validarEtapaComSwitch('checkPossuiEtapa11', 'rel_foto_exc_2025', 'Excessos de Velocidade', 'rel_exibir_etapa11')) return;
+    document.getElementById('tela_excessos').style.display = 'none'; 
+    document.getElementById('tela_multas').style.display = 'block'; 
 };
 
-window.voltarParaEtapa10 = () => {
-    document.getElementById('tela_excessos').style.display = 'none';
-    document.getElementById('tela_reclamacoes').style.display = 'block';
+window.voltarParaEtapa11 = () => { 
+    document.getElementById('tela_multas').style.display = 'none'; 
+    document.getElementById('tela_excessos').style.display = 'block'; 
 };
 
 window.finalizarRelatorio = function() {
-    const exc25 = localStorage.getItem('rel_foto_exc_2025');
-    if (!exc25) return alert("⚠️ Anexe o print de excessos de velocidade 2025.");
-    alert("Relatório processado com sucesso!");
-    window.location.href = "relatorio.html";
+    if (!validarEtapaComSwitch('checkPossuiEtapa12', 'rel_foto_multas', 'Multas', 'rel_exibir_etapa12')) return;
+    if (!confirm("Deseja gerar o relatório final formatado?")) return;
+    
+    localStorage.setItem('rel_gps_resumo', document.getElementById('editResumoGPS').value);
+    localStorage.setItem('rel_previa_resumo', document.getElementById('editResumoGPSConclusao').value); 
+    
+    // --- LÓGICA DA ASSINATURA DINÂMICA PARA O PDF ---
+    const nomeAnalista = document.getElementById('analista').value;
+    const containerParaPDF = document.body; 
+
+    const assinatura = document.createElement("div");
+    assinatura.className = "assinatura-pdf";
+    assinatura.innerText = `DO.ACT.IOP – ${nomeAnalista}`;
+
+    containerParaPDF.appendChild(assinatura);
+    
+    window.open('relatorio_v2.html', '_blank');
+
+    setTimeout(() => {
+        assinatura.remove();
+    }, 2000);
 };
 
-// 4. LÓGICA DE LAYOUT DE FOTOS
+// 5. LÓGICA DE LAYOUT DE FOTOS
 window.ajustarLayoutFotos = function(containerId, orientacao) {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.className = (orientacao === 'horizontal') ? 'layout-fotos-horizontal' : 'layout-fotos-vertical';
-    localStorage.setItem('rel_orientacao_' + containerId, orientacao);
-};
-
-// 5. SISTEMA DE CAPTURA COM COMPRESSÃO (REVISADO PARA EVITAR ERRO DE TAMANHO)
-function configurarSistemaPaste(idArea, idPreview, storageKey) {
-    const area = document.getElementById(idArea);
-    const prev = document.getElementById(idPreview);
-    if (!area || !prev) return;
-
-    area.addEventListener('paste', (e) => {
-        const itens = (e.clipboardData || e.originalEvent.clipboardData).items;
-        for (let i = 0; i < itens.length; i++) {
-            if (itens[i].type.indexOf("image") !== -1) {
-                const blob = itens[i].getAsFile();
-                const reader = new FileReader();
-                
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    
-                    img.onload = () => {
-                        // Criamos um canvas para redimensionar a imagem
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-
-                        // Reduz a escala se a imagem for muito grande (max 1200px)
-                        const MAX_WIDTH = 1200;
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-
-                        // Exporta como JPEG com qualidade 0.7 (reduz 80% do peso sem notar diferença)
-                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                        
-                        prev.src = compressedBase64;
-                        prev.style.display = "block";
-                        const ph = area.querySelector('.placeholder-interno');
-                        if (ph) ph.style.display = "none";
-                        
-                        try {
-                            localStorage.setItem(storageKey, compressedBase64);
-                            console.log(`Sucesso: ${storageKey} comprimida.`);
-                        } catch (err) {
-                            console.error("Erro persistente de storage:", err);
-                            alert("O navegador ainda diz que está cheio. Tente limpar o cache ou use uma imagem menor.");
-                        }
-                    };
-                };
-                reader.readAsDataURL(blob);
-            }
-        }
-    });
-    area.onclick = () => area.focus();
-}
-
-// 3. NAVEGAÇÃO REVISADA (ETAPA 3 PARA 4)
-window.irParaGPSConclusao = function() {
-    const vel = document.getElementById('velocidade_via').value;
-    const f1 = localStorage.getItem('rel_foto_sentido_v');
-    const f2 = localStorage.getItem('rel_foto_sentido_o');
-
-    // Validação flexível: se existir qualquer dado, ele deixa passar
-    if (!f1 || f1.length < 100 || !f2 || f2.length < 100) {
-        return alert("⚠️ As fotos do local (3.0) não foram identificadas. Cole-as novamente.");
+    const btnH = document.getElementById('btnLayoutH');
+    const btnV = document.getElementById('btnLayoutV');
+    if (btnH && btnV) {
+        btnH.classList.toggle('active', orientacao === 'horizontal');
+        btnV.classList.toggle('active', orientacao === 'vertical');
     }
-
-    if (!vel) return alert("⚠️ Selecione a velocidade da via.");
-
-    localStorage.setItem('rel_velocidade_via', vel);
-    document.getElementById('tela_imagens_local').style.display = 'none';
-    document.getElementById('tela_gps_conclusao').style.display = 'block';
-    
-    setTimeout(() => { atualizarInterfaceGraficos("_conclusao"); }, 150);
+    localStorage.setItem('rel_layout_fotos', orientacao);
 };
 
-// 6. BUSCA DE DADOS DIM
+// 7. BUSCA DE DADOS DIM
 async function buscarDadosDIM(prefixoAlvo) {
     try {
         const response = await fetch(URL_DIM_VEICULOS + "&t=" + new Date().getTime());
         const csvData = await response.text();
-        if (csvData.includes("<!DOCTYPE html>")) return null;
         const separador = csvData.includes(';') ? ';' : ',';
         const linhas = csvData.split("\n");
         for (let i = 1; i < linhas.length; i++) {
             const regex = new RegExp(`${separador}(?=(?:(?:[^"]*"){2})*[^"]*$)`);
             const col = linhas[i].split(regex).map(c => c.replace(/"/g, '').trim());
-            if (col[1] === prefixoAlvo) {
-                return { modelo: col[10], ano: parseInt(col[5]?.replace(',', '.')) };
-            }
+            if (col[1] === prefixoAlvo) return { modelo: col[10], ano: parseInt(col[5]) };
         }
     } catch (e) { console.error("Erro DIM:", e); } 
     return null;
 }
 
-// 7. INICIALIZAÇÃO GERAL
+// 8. INICIALIZAÇÃO GERAL
 window.onload = function() {
-    configurarSistemaPaste('areaCapturaFoto', 'imgPreview', 'rel_foto_gps');
-    configurarSistemaPaste('areaSentidoVeiculo', 'prevSentidoVeiculo', 'rel_foto_sentido_v');
-    configurarSistemaPaste('areaSentidoOposto', 'prevSentidoOposto', 'rel_foto_sentido_o');
-    configurarSistemaPaste('areaCapturaFotoConclusao', 'prevGPSConclusao', 'rel_foto_gps_conclusao');
-    configurarSistemaPaste('areaFotoHistorico', 'prevHistorico', 'rel_foto_historico');
-    configurarSistemaPaste('areaFotoEscala', 'prevEscala', 'rel_foto_escala');
-    configurarSistemaPaste('areaTreinamento1', 'prevTreinamento1', 'rel_foto_treinamento_1');
-    configurarSistemaPaste('areaTreinamento2', 'prevTreinamento2', 'rel_foto_treinamento_2');
-    configurarSistemaPaste('areaSinistro25', 'prevSinistro25', 'rel_foto_sinistro_2025');
-    configurarSistemaPaste('areaSinistro26', 'prevSinistro26', 'rel_foto_sinistro_2026');
-    configurarSistemaPaste('areaRec25', 'prevRec25', 'rel_foto_rec_2025');
-    configurarSistemaPaste('areaRec26', 'prevRec26', 'rel_foto_rec_2026');
-    configurarSistemaPaste('areaExc25', 'prevExc25', 'rel_foto_exc_2025');
-    configurarSistemaPaste('areaFoto52_1', 'prev52_1', 'rel_foto_52_1');
-    configurarSistemaPaste('areaFoto52_2', 'prev52_2', 'rel_foto_52_2');
+    const btnLayoutH = document.getElementById('btnLayoutH');
+    const btnLayoutV = document.getElementById('btnLayoutV');
+    if (btnLayoutH) btnLayoutH.onclick = () => window.ajustarLayoutFotos('containerFotos50', 'horizontal');
+    if (btnLayoutV) btnLayoutV.onclick = () => window.ajustarLayoutFotos('containerFotos50', 'vertical');
+
+    const colagens = [
+        ['areaCapturaFoto', 'imgPreview', 'rel_foto_gps'],
+        ['areaSentidoVeiculo', 'prevSentidoVeiculo', 'rel_foto_sentido_v'],
+        ['areaSentidoOposto', 'prevSentidoOposto', 'rel_foto_sentido_o'],
+        ['areaCapturaFotoConclusao', 'prevGPSConclusao', 'rel_foto_previa'],
+        ['areaFotoHistorico', 'prevHistorico', 'rel_foto_historico'],
+        ['areaFotoEscala', 'prevEscala', 'rel_foto_escala'],
+        ['areaTreinamento1', 'prevTreinamento1', 'rel_foto_treinamento_1'],
+        ['areaTreinamento2', 'prevTreinamento2', 'rel_foto_treinamento_2'],
+        ['areaSinistro25', 'prevSinistro25', 'rel_foto_sinistro_2025'],
+        ['areaSinistro26', 'prevSinistro26', 'rel_foto_sinistro_2026'],
+        ['areaRec25', 'prevRec25', 'rel_foto_rec_2025'],
+        ['areaRec26', 'prevRec26', 'rel_foto_rec_2026'],
+        ['areaExc25', 'prevExc25', 'rel_foto_exc_2025'],
+        ['areaFoto52_1', 'prev52_1', 'rel_foto_52_1'],
+        ['areaFoto52_2', 'prev52_2', 'rel_foto_52_2'],
+        ['areaMultas', 'prevMultas', 'rel_foto_multas']
+    ];
+    
+    colagens.forEach(c => configurarCapturaImagem(c[0], c[1], c[2]));
 
     for (let i = 1; i <= 6; i++) {
-        configurarSistemaPaste(`areaFoto50_${i}`, `prev50_${i}`, `rel_foto_50_${i}`);
-        configurarSistemaPaste(`areaFoto51_${i}`, `prev51_${i}`, `rel_foto_51_${i}`);
-    }
-
-    const selectVel = document.getElementById('velocidade_via');
-    if (selectVel) {
-        for (let i = 10; i <= 120; i += 10) {
-            let opt = document.createElement('option');
-            opt.value = i + " km/h"; opt.innerHTML = i + " km/h";
-            selectVel.appendChild(opt);
-        }
+        configurarCapturaImagem(`areaFoto50_${i}`, `prev50_${i}`, `rel_foto_50_${i}`);
     }
 
     const formPrincipal = document.getElementById('formSinistro');
     if (formPrincipal) {
         formPrincipal.addEventListener('submit', async function(e) {
             e.preventDefault();
+            const chavesParaLimpar = [
+                'rel_foto_gps', 'rel_foto_sentido_v', 'rel_foto_sentido_o', 'rel_foto_previa',
+                'rel_foto_historico', 'rel_foto_escala', 'rel_foto_treinamento_1', 'rel_foto_treinamento_2',
+                'rel_foto_sinistro_2025', 'rel_foto_sinistro_2026', 'rel_foto_rec_2025', 'rel_foto_rec_2026',
+                'rel_foto_exc_2025', 'rel_foto_52_1', 'rel_foto_52_2', 'rel_falha_camera_1', 'rel_falha_camera_2',
+                'rel_exibir_etapa6', 'rel_exibir_etapa7', 'rel_exibir_etapa8', 'rel_exibir_etapa9', 'rel_exibir_etapa10', 
+                'rel_exibir_etapa11', 'rel_exibir_etapa12', 'rel_foto_multas'
+            ];
+            chavesParaLimpar.forEach(key => localStorage.removeItem(key));
+
+            for(let i=1; i<=6; i++){
+                localStorage.removeItem('rel_foto_50_'+i);
+            }
+
+            document.querySelectorAll('img[id^="prev"], img[id^="imgPreview"]').forEach(img => {
+                img.src = "";
+                img.style.display = "none";
+            });
+            document.querySelectorAll('.placeholder-interno').forEach(ph => ph.style.display = "block");
+            
+            localStorage.setItem('rel_layout_fotos', 'vertical');
+            localStorage.setItem('rel_exibir_cameras', 'Não');
+
             const dados = {
                 data_ocorrido: document.getElementById('data_ocorrido').value,
                 prefixo: document.getElementById('prefixo').value.trim(),
@@ -515,20 +606,23 @@ window.onload = function() {
                 analista: document.getElementById('analista').value
             };
 
-            fetch(URL_GOOGLE_SHEETS, { method: 'POST', mode: 'no-cors', body: JSON.stringify(dados) });
+            fetch(URL_GOOGLE_SHEETS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dados)
+            }).then(() => console.log("Dados enviados para o Sheets."))
+              .catch(err => console.error("Erro no Sheets:", err));
 
             const dataBR = formatarDataBR(dados.data_ocorrido);
             const res1 = `No dia ${dataBR} às ${dados.hora_ocorrido}, o veículo ${dados.prefixo} da ${dados.empresa}, operando na linha ${dados.horario_viagem} ${dados.origem} X ${dados.destino}, se envolveu em um Sinistro ${dados.tipo_evento}, na ${dados.local_ocorrencia}.`;
             const res2 = `No momento do sinistro, às ${dados.hora_ocorrido}, o condutor se encontrava na velocidade de _____ km/h interagindo com o pedal de acelerador, conforme imagens abaixo:`;
             const res4 = `Consideramos o horário do sinistro às ${dados.hora_ocorrido}, visto que a sua velocidade diminui de _____ Km/h para _____ Km/h, conforme imagem abaixo:`;
 
-            localStorage.clear();
+            Object.entries(dados).forEach(([k, v]) => localStorage.setItem('rel_' + k, v));
             localStorage.setItem('rel_resumo_base', res1);
             localStorage.setItem('rel_gps_resumo', res2);
-            localStorage.setItem('rel_gps_conclusao_txt', res4);
+            localStorage.setItem('rel_previa_resumo', res4);
             localStorage.setItem('rel_txt_fadiga', dados.fadiga === "Não" ? "Veículo não possui Sensor de Fadiga" : `Veículo Possui Sensor de Fadiga: ${dados.ativo === "Sim" ? "Ativo" : "Inativo"}`);
-            localStorage.setItem('rel_prefixo', dados.prefixo);
-            localStorage.setItem('rel_analista', dados.analista);
 
             document.getElementById('textoResumoOcorrencia').innerText = res1;
             document.getElementById('diagnosticoFadiga').innerText = localStorage.getItem('rel_txt_fadiga');
@@ -544,9 +638,10 @@ window.onload = function() {
             const dim = await buscarDadosDIM(dados.prefixo);
             if (dim) {
                 document.getElementById('modeloVeiculoDinamico').innerText = `${dados.prefixo} | ${dim.modelo} | ${dim.ano}`;
+                localStorage.setItem('rel_modelo', dim.modelo);
+                localStorage.setItem('rel_ano', dim.ano);
                 const tecnologia = dim.ano >= 2019 ? "Veículo Possui Tecnologia ADAS/ABAS" : "Veículo Não possui Tecnologia ADAS/ABAS";
                 document.getElementById('tecnologiaSeguranca').innerText = tecnologia;
-                localStorage.setItem('rel_modelo_completo', `${dim.modelo} | ${dim.ano}`);
                 localStorage.setItem('rel_tecnologia_adas', tecnologia);
             }
         });
@@ -560,11 +655,11 @@ window.onload = function() {
             if(e.style.display === "none") {
                 e.style.display="block"; t.style.display="none"; btn.innerText="[ Salvar ]";
             } else {
-                e.style.display="none"; t.style.display="block"; t.innerText=e.value; btn.innerText="[ Editar ]";
+                e.style.display="none"; t.style.display="block"; t.innerText=e.value; btn.innerText="[ Editar resumo ]";
                 localStorage.setItem(key, e.value);
             }
         };
     };
     setupEdit('btnEditarGPS', 'textoResumoGPS', 'editResumoGPS', 'rel_gps_resumo');
-    setupEdit('btnEditarGPSConclusao', 'textoResumoGPSConclusao', 'editResumoGPSConclusao', 'rel_gps_conclusao_txt');
+    setupEdit('btnEditarGPSConclusao', 'textoResumoGPSConclusao', 'editResumoGPSConclusao', 'rel_previa_resumo');
 };
