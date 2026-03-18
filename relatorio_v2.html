@@ -6,7 +6,7 @@
     <title>Relatório de Sinistro - Grupo JCA</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-    
+
     <style>
         /* 1. RESET E CONFIGURAÇÕES DE ALTA QUALIDADE */
         * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
@@ -89,11 +89,7 @@
         .layout-relatorio-vertical { grid-template-columns: repeat(2, 1fr); }
         .layout-relatorio-horizontal { grid-template-columns: 1fr; }
 
-        /* =====================================================
-           RODAPÉ DE ASSINATURA — canto inferior direito
-           Injetado via JS em CADA .folha-a4
-           Visível na tela E na impressão
-        ====================================================== */
+        /* RODAPÉ DE ASSINATURA */
         .rodape-pagina {
             position: absolute;
             bottom: 12mm;
@@ -107,9 +103,15 @@
 
         .btn-float-print { position: fixed; bottom: 30px; right: 30px; padding: 15px 30px; background: #00003c; color: white; border: none; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: transform 0.2s; }
         .btn-float-print:hover { transform: scale(1.05); background: #00005a; }
+
+        @media print {
+            .btn-float-print { display: none !important; }
+        }
     </style>
 </head>
 <body>
+
+    <button onclick="window.print()" class="btn-float-print">🖨️ Gerar Relatório (PDF)</button>
 
     <div class="folha-a4">
         <div class="faixa-topo"></div>
@@ -289,7 +291,7 @@
         <header class="header-interno"><img src="https://res.cloudinary.com/dxnruvmgu/image/upload/v1770865291/GRUPOJCA_branco_r0nvw0.png" class="logo-interno"><div class="titulo-header-texto"><h2>Análise Técnica de Sinistro</h2><p>Ocorrência: <span class="num-ocorrencia-interna">---</span></p></div></header>
         <div class="secao-titulo">10.0 Reclamações de Clientes</div>
         <div id="conteudo_secao10">
-        <div id="box10_1" style="display:none; margin-bottom:15px;"><img id="rel_img_10_1" style="width:100%; max-height:500px; object-fit:contain; border:1px solid #ddd;"></div>
+            <div id="box10_1" style="display:none; margin-bottom:15px;"><img id="rel_img_10_1" style="width:100%; max-height:500px; object-fit:contain; border:1px solid #ddd;"></div>
         </div>
     </div>
 
@@ -310,10 +312,10 @@
         </div>
     </div>
 
-    <button onclick="window.print()" class="btn-float-print">Gerar Relatório (PDF)</button>
-
     <script>
     Chart.register(ChartDataLabels);
+
+    const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbxlOqtz4yniLangqgsUqVC6c1dK9hJpjtwHGyaUwik6vuw_Wz-95T7ffJy89_eJUPtonA/exec";
 
     window.onload = function() {
         Chart.defaults.devicePixelRatio = 4;
@@ -324,6 +326,7 @@
         const idOcorrencia = `${dataLimpa} - ${prefixo}`;
 
         document.querySelectorAll('.num-ocorrencia-interna').forEach(el => el.innerText = idOcorrencia);
+        document.title = 'Relatório de Sinistro - ' + idOcorrencia;
         document.getElementById('exibirEmpresa').innerText = localStorage.getItem('rel_empresa') || "---";
 
         const modelo = localStorage.getItem('rel_modelo') || "";
@@ -342,19 +345,14 @@
         document.getElementById('fotoSentidoV').src = localStorage.getItem('rel_foto_sentido_v') || "";
         document.getElementById('fotoSentidoO').src = localStorage.getItem('rel_foto_sentido_o') || "";
 
-        // ── RODAPÉ EM TODAS AS PÁGINAS ──────────────────────────────
-        // Injeta um div com position:absolute dentro de CADA .folha-a4
-        // Como a folha já tem position:relative, o rodapé fica sempre
-        // no canto inferior direito de cada página — na tela E no PDF
+        // RODAPÉ EM TODAS AS PÁGINAS
         const nomeAnalista = localStorage.getItem('rel_analista') || "---";
-
         document.querySelectorAll('.folha-a4').forEach(function(folha) {
             var rodape = document.createElement('div');
             rodape.className = 'rodape-pagina';
             rodape.innerHTML = '<strong>DO.ACT.IOP \u2013 ' + nomeAnalista + '</strong>';
             folha.appendChild(rodape);
         });
-        // ────────────────────────────────────────────────────────────
 
         const vPlaca = localStorage.getItem('rel_velocidade_via');
         if (vPlaca) {
@@ -432,11 +430,9 @@
         const orientacao = localStorage.getItem('rel_layout_fotos') || 'vertical';
 
         if (orientacao === 'vertical') {
-            // 2 colunas × 3 linhas, altura fixa para caber na página
             container.style.display = 'grid';
             container.style.gridTemplateColumns = '1fr 1fr';
             container.style.gap = '8px';
-
             let html = '';
             for (let i = 1; i <= 6; i++) {
                 const foto = localStorage.getItem(prefixoChave + i);
@@ -448,13 +444,10 @@
             }
             if (html === '') container.closest('.folha-a4').style.display = 'none';
             else container.innerHTML = html;
-
         } else {
-            // 1 coluna × 3 fotos, com espaço entre elas
             container.style.display = 'flex';
             container.style.flexDirection = 'column';
             container.style.gap = '10px';
-
             let html = '';
             for (let i = 1; i <= 3; i++) {
                 const foto = localStorage.getItem(prefixoChave + i);
@@ -478,35 +471,15 @@
         const dFre = JSON.parse(localStorage.getItem('rel_grafico_fre')) || [];
 
         const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            devicePixelRatio: 4,
+            responsive: true, maintainAspectRatio: false, animation: false, devicePixelRatio: 4,
             layout: { padding: { top: 18 } },
             plugins: {
                 legend: { display: false },
-                datalabels: {
-                    display: true,
-                    align: 'top',
-                    anchor: 'end',
-                    offset: 2,
-                    overlap: true,
-                    clamp: true,
-                    color: '#000',
-                    font: { weight: 'bold', size: 9 },
-                    formatter: (v) => v > 0 ? Math.round(v) : ''
-                }
+                datalabels: { display: true, align: 'top', anchor: 'end', offset: 2, overlap: true, clamp: true, color: '#000', font: { weight: 'bold', size: 9 }, formatter: (v) => v > 0 ? Math.round(v) : '' }
             },
             scales: {
-                x: {
-                    ticks: { font: { size: 9, weight: 'bold' }, maxRotation: 0 },
-                    grid: { display: false }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#f0f0f0' },
-                    ticks: { font: { size: 9 } }
-                }
+                x: { ticks: { font: { size: 9, weight: 'bold' }, maxRotation: 0 }, grid: { display: false } },
+                y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { font: { size: 9 } } }
             }
         };
 
